@@ -2,8 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
+const catalogFile = process.env.CATALOG_FILE || '/data/runtime-games.json';
+const catalogTemplate = process.env.CATALOG_TEMPLATE_FILE || '/data/games.json';
+
+try {
+  if (!fs.existsSync(catalogFile)) {
+    fs.mkdirSync(path.dirname(catalogFile), { recursive: true });
+    fs.copyFileSync(catalogTemplate, catalogFile);
+    console.log(`[library-manager] Runtime catalog initialized from ${catalogTemplate}`);
+  }
+} catch (error) {
+  console.error(`[library-manager] Could not initialize runtime catalog: ${error.message}`);
+}
+
 if (!process.env.ADMIN_TOKEN || String(process.env.ADMIN_TOKEN).length < 16) {
-  const catalogFile = process.env.CATALOG_FILE || '/data/games.json';
   const tokenFile = process.env.ADMIN_TOKEN_FILE || path.join(path.dirname(catalogFile), 'admin-token');
   try {
     let token = '';
