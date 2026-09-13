@@ -14,6 +14,7 @@
 </p>
 
 <p align="center">
+  <a href="https://indie-master.github.io/retro-portal/">▶ Live Demo</a> ·
   <a href="README_EN.md">English</a> ·
   <a href="docs/ru/INSTALL.md">Установка</a> ·
   <a href="docs/ru/NGINX.md">Nginx / TLS</a> ·
@@ -24,11 +25,13 @@
 
 ![Retro Portal](docs/images/banner.svg)
 
-![Главная страница](docs/images/home.svg)
+**Демо:** https://indie-master.github.io/retro-portal/ — статическая GitHub Pages версия с шестью легально распространяемыми homebrew ROM и EmulatorJS.
+
+![Главная страница](docs/images/home.png)
 
 ### Локальный ROM-плеер
 
-![Local ROM](docs/images/local-rom.svg)
+![Local ROM](docs/images/local-rom.png)
 
 ## Что это
 
@@ -53,7 +56,7 @@ Retro Portal превращает VPS, мини-ПК или домашний с�
 - переиспользование подходящего wildcard/SAN сертификата;
 - Let's Encrypt HTTP-01 и Cloudflare DNS-01;
 - backup + обязательный `nginx -t` перед reload;
-- curated presets для популярных Mega Drive / PS1 / Dreamcast игр **без распространения ROM/BIOS/artwork**;
+- curated presets для популярных Mega Drive / PS1 / Dreamcast игр **без распространения коммерческих ROM/BIOS/artwork**;
 - экспериментальная подготовка каталога под Dreamcast / Flycast WASM.
 
 ## Требования
@@ -67,14 +70,11 @@ Retro Portal превращает VPS, мини-ПК или домашний с�
 | Сеть | 100 Mbps | 1 Gbps |
 | GPU | не нужен | не нужен |
 
-Для Mega Drive/NES/SNES нагрузка на VPS минимальна. Для PS1 и особенно будущей Dreamcast-библиотеки важнее объём диска и скорость отдачи больших образов.
-
 ## Быстрый старт
 
 ```bash
 sudo apt update
 sudo apt install -y git
-
 git clone https://github.com/indie-master/retro-portal.git retro-portal
 cd retro-portal
 sudo ./scripts/install.sh
@@ -89,7 +89,7 @@ sudo ./scripts/install.sh
 4) Local test             быстрый тест без домена/TLS
 ```
 
-Подробная пошаговая инструкция: [docs/ru/INSTALL.md](docs/ru/INSTALL.md).
+Подробная инструкция: [docs/ru/INSTALL.md](docs/ru/INSTALL.md).
 
 ## Быстрый тест с открытыми играми
 
@@ -99,35 +99,23 @@ sudo ./scripts/install.sh
 docker compose up -d --build
 ```
 
-После этого в библиотеке появятся тестовые Mega Drive homebrew-игры из открытого проекта `retro-homebrew-games`.
+После этого доступны шесть MIT-лицензированных Mega Drive homebrew-игр: Tank Battle, Battle 4Tris, Pong, Snake Arena, Space Shooter и Breakout.
 
 ## Своя библиотека: Sonic, Mortal Kombat, Tekken и другие
 
-Retro Portal **не содержит коммерческих ROM, BIOS или официальных обложек**. Вместо этого в `catalog/presets/curated-classics.json` лежат готовые метаданные и ожидаемые имена файлов для выбранной стартовой коллекции.
+В `catalog/presets/curated-classics.json` уже лежат готовые метаданные и ожидаемые имена файлов для стартовой коллекции.
 
-Например, для Sonic 2:
+**Mega Drive:** Sonic the Hedgehog 2, Mortal Kombat II, Streets of Rage 2, Comix Zone, Road Rash III, Contra: Hard Corps.
 
-```text
-games/roms/megadrive/sonic-the-hedgehog-2.bin
-public/covers/library/sonic-the-hedgehog-2.webp
-public/screenshots/library/sonic-the-hedgehog-2.webp   # необязательно
-```
+**PlayStation:** Tekken 3, Crash Bandicoot 3: Warped, Crash Team Racing, Tony Hawk's Pro Skater 2, Resident Evil 2, Worms Armageddon.
 
-После добавления собственных файлов:
+**Dreamcast (experimental):** Crazy Taxi, Soulcalibur, Sonic Adventure, Jet Set Radio.
+
+Коммерческие ROM, BIOS и официальные обложки публичный репозиторий не распространяет. Положите собственные файлы по ожидаемым путям и выполните:
 
 ```bash
 ./scripts/sync-classics.sh
 ```
-
-Скрипт добавляет в рабочий каталог **только те игры, для которых реально найдены ROM + обложка + требуемый BIOS**. Поэтому карточка никогда не показывает «левую» обложку от другой игры.
-
-Преднастроены метаданные для:
-
-**Mega Drive:** Sonic the Hedgehog 2, Mortal Kombat II, Streets of Rage 2, Comix Zone, Road Rash 3, Contra: Hard Corps.
-
-**PlayStation:** Tekken 3, Crash Bandicoot 3, Crash Team Racing, Tony Hawk's Pro Skater 2, Resident Evil 2, Worms Armageddon.
-
-**Dreamcast (experimental):** Crazy Taxi, Soulcalibur, Sonic Adventure, Jet Set Radio.
 
 Подробнее: [docs/ru/ROMS.md](docs/ru/ROMS.md).
 
@@ -138,39 +126,16 @@ public/screenshots/library/sonic-the-hedgehog-2.webp   # необязатель�
 Обычная схема:
 
 ```text
-Internet :443
-   ↓
-Nginx HTTPS
-   ↓
-127.0.0.1:8088 → Retro Portal
+Internet :443 → Nginx HTTPS → 127.0.0.1:8088 → Retro Portal
 ```
 
 Схема со `stream`:
 
 ```text
-Internet :443
-   ↓
-Nginx stream + ssl_preread
-   ↓ SNI
-127.0.0.1:8443 HTTPS
-   ↓
-127.0.0.1:8088 → Retro Portal
+Internet :443 → Nginx stream + ssl_preread → inner HTTPS → Retro Portal
 ```
 
-Если автоматическая правка небезопасна, installer генерирует готовые snippets вместо изменения рабочего конфига. Подробнее: [docs/ru/NGINX.md](docs/ru/NGINX.md).
-
-## Сертификаты
-
-`--tls auto` сначала пытается найти уже существующий сертификат, покрывающий выбранный hostname. Проверяются SAN/wildcard, срок действия и соответствие private key. Если сертификата нет, доступны HTTP-01, Cloudflare DNS-01 или собственные пути к cert/key.
-
-Пример:
-
-```bash
-sudo ./scripts/install.sh \
-  --mode existing \
-  --domain arcade.example.com \
-  --tls auto
-```
+Если автоматическая правка небезопасна, installer генерирует готовые snippets. Подробнее: [docs/ru/NGINX.md](docs/ru/NGINX.md).
 
 ## Полезные команды
 
@@ -185,9 +150,7 @@ docker compose logs -f --tail=100
 
 ## Dreamcast
 
-Dreamcast в EmulatorJS официально не входит в стандартный список систем. Проект `flycast-wasm` в 2026 году добавил рабочий браузерный Flycast core, но интеграция остаётся более молодой и экспериментальной, чем Mega Drive/PS1. Поэтому Retro Portal уже понимает Dreamcast-метаданные и BIOS-набор, но **не включает Dreamcast runtime по умолчанию и не выдаёт его за production-ready**.
-
-Текущее состояние и план интеграции: [docs/ru/DREAMCAST.md](docs/ru/DREAMCAST.md).
+Dreamcast runtime пока считается experimental. Каталог и BIOS-модель уже готовы, но полноценный Flycast WASM launcher не включён по умолчанию. См. [docs/ru/DREAMCAST.md](docs/ru/DREAMCAST.md).
 
 ## Правовой момент
 
