@@ -6,7 +6,8 @@ services:
     user: "${PUID:-1000}:${PGID:-1000}"
     environment:
       PORT: "3000"
-      CATALOG_FILE: /data/games.json
+      CATALOG_FILE: /data/runtime-games.json
+      CATALOG_TEMPLATE_FILE: /data/games.json
       PRESET_FILE: /data/presets/curated-classics.json
       ROM_ROOT: /roms
       BIOS_ROOT: /bios
