@@ -1,8 +1,40 @@
 <!doctype html>
 <html lang="ru">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101820"><title>Игра · Retro Portal</title><link rel="stylesheet" href="/styles.css"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07131a">
+  <title>Игра · Retro Portal</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
 <body class="player-page">
-  <header class="topbar"><a class="brand" href="/"><span class="brand-pixel">▦</span><span>RETRO</span><strong>PORTAL</strong></a><a class="back-link" href="/">← Библиотека</a><div class="status"><i id="statusDot"></i><span id="connection">подключение</span><b id="online">0</b><em>онлайн</em></div></header>
-  <main class="player-shell"><div class="player-meta"><div><p id="gameSystem" class="eyebrow">ЗАГРУЗКА</p><h1 id="gameTitle">Готовим игру…</h1></div><div class="player-actions"><button id="reloadGame" class="button" type="button">↻ ПЕРЕЗАПУСК</button><a class="button" href="/">ВЫЙТИ</a></div></div><div id="playerNotice" class="notice">Подготавливаем эмулятор…</div><div id="game" class="emulator-stage"></div><section class="player-help"><div><strong>Полный экран</strong><span>Через панель EmulatorJS.</span></div><div><strong>Save state</strong><span>Сохраняйся из меню эмулятора.</span></div><div><strong>Геймпад</strong><span>Можно подключить до или во время игры.</span></div></section></main>
+  <header class="topbar">
+    <div class="player-topbar-inner">
+      <a class="brand" href="/" aria-label="Retro Portal — на главную"><span class="brand-pixel">▦</span><span>RETRO</span><strong>PORTAL</strong></a>
+      <a class="back-link" href="/#library">← Библиотека</a>
+      <div class="status"><i id="statusDot"></i><span id="connection">В СЕТИ</span><strong id="online">0</strong><em>ОНЛАЙН</em></div>
+    </div>
+  </header>
+
+  <main class="player-shell">
+    <div class="player-meta">
+      <div><p id="gameSystem" class="eyebrow">ЗАГРУЗКА</p><h1 id="gameTitle">Готовим игру…</h1></div>
+      <div class="player-actions">
+        <button id="fullscreenGame" class="button" type="button">⛶ ПОЛНЫЙ ЭКРАН</button>
+        <button id="reloadGame" class="button" type="button">↻ ПЕРЕЗАПУСК</button>
+        <a class="button" href="/#library">ВЫЙТИ</a>
+      </div>
+    </div>
+    <div id="playerNotice" class="notice">Подготавливаем игру…</div>
+    <div id="gamepadNotice" class="gamepad-toast" hidden>🎮 Геймпад подключён</div>
+    <section class="game-frame" id="gameFrame"><div id="game" class="emulator-stage"></div></section>
+    <section class="player-help">
+      <div><strong>Полный экран</strong><span>Кнопка сверху разворачивает игровую область.</span></div>
+      <div><strong>Сохранения</strong><span>Используйте меню эмулятора для save state.</span></div>
+      <div><strong>Геймпад</strong><span>USB / Bluetooth можно подключить до или во время игры.</span></div>
+    </section>
+  </main>
+
   <script src="/presence.js"></script><script src="/game.js"></script>
-</body></html>
+</body>
+</html>
