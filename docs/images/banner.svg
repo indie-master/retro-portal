@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-label="Retro Portal">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#0b151d"/><stop offset="1" stop-color="#16242b"/></linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#102c36"/><stop offset="1" stop-color="#173126"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-opacity=".35"/></filter>
+  </defs>
+  <rect width="1280" height="420" fill="url(#bg)"/>
+  <circle cx="1030" cy="190" r="210" fill="#d58d3a" opacity=".08"/>
+  <g transform="translate(90 92)">
+    <g fill="#a9d56f"><rect x="0" y="0" width="12" height="12"/><rect x="24" y="0" width="12" height="12"/><rect x="-12" y="12" width="60" height="12"/><rect x="0" y="24" width="12" height="12"/><rect x="24" y="24" width="12" height="12"/></g>
+    <text x="72" y="31" fill="#f3ead9" font-family="Verdana,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing="3">RETRO</text>
+    <text x="208" y="31" fill="#f4b85d" font-family="Verdana,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing="3">PORTAL</text>
+    <text x="0" y="112" fill="#f6eee2" font-family="Verdana,Arial,sans-serif" font-size="62" font-weight="900">Твой ретро-уголок.</text>
+    <text x="0" y="168" fill="#f4b85d" font-family="Verdana,Arial,sans-serif" font-size="62" font-weight="900">Прямо в браузере.</text>
+    <text x="3" y="222" fill="#a7b3b3" font-family="Verdana,Arial,sans-serif" font-size="20">Self-hosted · EmulatorJS · ROM library · WebSocket presence</text>
+  </g>
+  <g transform="translate(900 62)" filter="url(#shadow)">
+    <rect x="0" y="0" width="282" height="270" rx="28" fill="#625a53" stroke="#292827" stroke-width="5"/>
+    <rect x="27" y="25" width="228" height="172" rx="22" fill="#171f21"/>
+    <rect x="42" y="40" width="198" height="142" rx="12" fill="url(#screen)"/>
+    <g fill="#4f803e"><rect x="42" y="154" width="198" height="28"/><rect x="58" y="140" width="32" height="14"/><rect x="166" y="136" width="48" height="18"/></g>
+    <text x="141" y="94" text-anchor="middle" fill="#ffc56c" font-family="monospace" font-size="26" font-weight="900">RETRO</text>
+    <text x="141" y="123" text-anchor="middle" fill="#ffc56c" font-family="monospace" font-size="26" font-weight="900">PORTAL</text>
+    <text x="141" y="148" text-anchor="middle" fill="#a9d56f" font-family="monospace" font-size="11" font-weight="900">▶ PRESS START</text>
+    <circle cx="232" cy="236" r="8" fill="#8bd65e" stroke="#263328" stroke-width="3"/>
+    <text x="28" y="241" fill="#211f1d" font-family="monospace" font-size="9" font-weight="900">PLAY · EXPLORE · REPEAT</text>
+  </g>
+  <rect x="0" y="396" width="1280" height="24" fill="#081018"/>
+</svg>
