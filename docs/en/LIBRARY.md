@@ -6,23 +6,17 @@ Retro Portal 0.7 separates the player-facing library from owner-only content man
 - `/local.html` — local ROM player; the selected file stays in the user's browser.
 - `/admin.html` — owner-only Library Manager for ROMs, BIOS files, scanning and metadata.
 
-Visitors should never have to understand missing ROMs, BIOS paths or server layout.
+Visitors never need to understand missing ROMs, BIOS paths or server layout.
 
 ## First login
 
-If `ADMIN_TOKEN` is not set in `.env`, the backend creates a random token on first start.
+If `ADMIN_TOKEN` is not set in `.env`, the backend creates a random token on first start:
 
 ```bash
 cat catalog/admin-token
 ```
 
-Open:
-
-```text
-https://your-domain/admin.html
-```
-
-and paste the token. The browser keeps it only in the current tab's `sessionStorage`.
+Open `https://your-domain/admin.html` and paste the token. The browser keeps it only in the current tab's `sessionStorage`.
 
 You may set your own token in `.env`:
 
@@ -40,7 +34,9 @@ ADMIN_TOKEN=a-long-random-secret
 
 The backend stores the file in the platform directory, creates or updates its catalog card, checks BIOS requirements and exposes the game publicly only after it is actually playable.
 
-If the filename matches a game in `catalog/presets/curated-classics.json`, the local preset metadata is applied automatically. Unknown games still receive a generated title/card from the filename.
+If the filename matches a game in `catalog/presets/curated-classics.json`, local preset metadata is applied automatically. Unknown games still receive a generated title/card from the filename.
+
+When TheGamesDB is configured, a successful browser upload automatically triggers metadata enrichment for title, year, description, player count and box art. Provider lookup failure does not roll back the ROM import; the local card remains usable and enrichment can be retried later.
 
 ## Scanning a large collection
 
@@ -85,7 +81,7 @@ games/bios/dreamcast/dc_flash.bin
 
 Dreamcast remains experimental until the browser Flycast runtime is finalized.
 
-## Optional metadata and box art
+## Automatic metadata and box art
 
 Without an external provider Retro Portal can already:
 
@@ -104,6 +100,8 @@ Restart the stack:
 ```bash
 docker compose up -d
 ```
+
+Enrichment then runs automatically after a ROM is uploaded through Library Manager. The **Update metadata** action remains available for retries or refreshing an existing title.
 
 The API key stays on the backend and is never exposed to portal visitors.
 
