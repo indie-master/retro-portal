@@ -18,26 +18,26 @@
   </svg>
 
   <header class="topbar local-topbar"><div class="local-wide topbar-inner">
-    <a class="brand" href="/"><svg class="brand-mark"><use href="#i-alien"/></svg><span>RETRO</span><strong>PORTAL</strong></a>
-    <a class="back-link" href="/">← Библиотека</a>
-    <div class="status"><i id="statusDot"></i><span id="connection">В СЕТИ</span><svg><use href="#i-users"/></svg><strong id="online">0</strong><em>ИГРОКА</em></div>
+    <a class="brand" href="./index.html" aria-label="Retro Portal — на главную"><svg class="brand-mark"><use href="#i-alien"/></svg><span>RETRO</span><strong>PORTAL</strong></a>
+    <a class="back-link" href="./index.html#library">← Библиотека</a>
+    <div class="status"><i id="statusDot"></i><span id="connection">В СЕТИ</span><svg><use href="#i-users"/></svg><strong id="online">0</strong><em>ОНЛАЙН</em></div>
   </div></header>
 
   <main>
     <section class="local-hero"><div class="local-wide local-hero-grid"><div class="local-copy">
       <p class="eyebrow">ЛОКАЛЬНЫЙ ROM ПЛЕЕР</p>
       <h1>Своя игра.<br>Прямо из <span>файла.</span></h1>
-      <p class="lead">ROM остаётся на твоём устройстве: браузер создаёт локальный Object URL и передаёт его EmulatorJS. На сервер сам файл не загружается — быстро, приватно и безопасно.</p>
-    </div><div class="local-hero-art" role="img" aria-label="CRT-монитор с надписью Play Anything"></div></div></section>
+      <p class="lead">ROM остаётся на твоём устройстве. Выбери платформу, укажи файл — и игра запустится локально в браузере, без загрузки ROM на сервер.</p>
+    </div><div class="local-hero-art"><div class="local-crt"><strong>PLAY<br>ANYTHING</strong><span>FROM YOUR ROM</span><em>JUST PLAY</em></div></div></div></section>
 
     <section class="local-wide launcher-section"><div class="launcher-layout">
       <section id="launcher" class="launcher">
-        <label class="field-label">1. ВЫБЕРИТЕ ПЛАТФОРМУ<select id="core"><option value="nes">NES / Famicom</option><option value="snes">SNES</option><option value="gb">Game Boy / Color</option><option value="gba">Game Boy Advance</option><option value="segaMD">Mega Drive / Genesis</option><option value="psx">PlayStation</option><option value="n64">Nintendo 64</option><option value="arcade">Arcade</option></select></label>
-        <label class="field-label rom-label">2. ВЫБЕРИТЕ ROM ФАЙЛ<span class="drop" id="dropZone"><input id="rom" type="file" accept=".zip,.7z,.nes,.sfc,.smc,.gb,.gbc,.gba,.bin,.cue,.chd,.md,.gen,.z64,.n64,.v64"><svg class="folder-icon"><use href="#i-folder"/></svg><strong>Перетащите ROM файл сюда</strong><span id="romName">или нажмите, чтобы выбрать файл</span><em>Поддерживаются: <b>.nes</b><b>.sfc</b><b>.gb</b><b>.gba</b><b>.gen</b><b>.zip</b><b>и другие</b></em></span></label>
+        <label class="field-label">1. ВЫБЕРИТЕ ПЛАТФОРМУ<select id="core"><option value="nes">NES / Famicom</option><option value="snes">SNES</option><option value="gb">Game Boy / Color</option><option value="gba">Game Boy Advance</option><option value="segaMD">Mega Drive / Genesis</option><option value="psx">PlayStation</option><option value="n64">Nintendo 64</option><option value="arcade">Arcade</option><option value="flycast" disabled>Dreamcast — experimental</option></select></label>
+        <label class="field-label rom-label">2. ВЫБЕРИТЕ ROM ФАЙЛ<span class="drop" id="dropZone"><input id="rom" type="file" accept=".zip,.7z,.nes,.sfc,.smc,.gb,.gbc,.gba,.bin,.cue,.chd,.md,.gen,.z64,.n64,.v64"><svg class="folder-icon"><use href="#i-folder"/></svg><strong>Перетащите ROM файл сюда</strong><span id="romName">или нажмите, чтобы выбрать файл</span><em>Поддерживаются: <b>.nes</b><b>.sfc</b><b>.gb</b><b>.gba</b><b>.gen</b><b>.chd</b><b>и другие</b></em></span></label>
         <div class="launch-row"><button id="launch" class="primary local-launch" disabled><svg><use href="#i-gamepad"/></svg> ЗАПУСТИТЬ ИГРУ <b>→</b></button><p><span class="shield">◇</span> Файл остаётся на вашем устройстве<br>и не загружается на сервер</p></div>
       </section>
-      <aside class="launcher-aside"><div class="aside-item"><b><svg><use href="#i-bolt"/></svg></b><div><strong>Быстрое начало</strong><span>Загрузите файл и играйте<br>без ожидания</span></div></div><div class="aside-item"><b><svg><use href="#i-lock"/></svg></b><div><strong>Полная приватность</strong><span>ROM обрабатывается локально<br>в вашем браузере</span></div></div><div class="aside-item"><b><svg><use href="#i-gamepad"/></svg></b><div><strong>Поддержка множества<br>платформ</strong><span>От NES и SNES до PlayStation<br>и других систем</span></div></div><div class="aside-motto">GOOD GAMES<br>BETTER DAYS</div></aside>
-    </div><section id="playerWrap" class="player-wrap hidden"><div class="playerbar"><button id="reset" class="secondary">← СМЕНИТЬ ИГРУ</button><span id="nowPlaying"></span></div><div id="game" class="emulator-stage"></div></section></section>
+      <aside class="launcher-aside"><div class="aside-item"><b><svg><use href="#i-bolt"/></svg></b><div><strong>Быстрое начало</strong><span>Выберите файл и играйте<br>без ожидания</span></div></div><div class="aside-item"><b><svg><use href="#i-lock"/></svg></b><div><strong>Полная приватность</strong><span>ROM остаётся локально<br>в вашем браузере</span></div></div><div class="aside-item"><b><svg><use href="#i-gamepad"/></svg></b><div><strong>Любимые платформы</strong><span>От NES и SNES до Mega Drive<br>и PlayStation</span></div></div><div class="aside-motto">GOOD GAMES<br>BETTER DAYS</div></aside>
+    </div><section id="playerWrap" class="player-wrap hidden"><div class="playerbar"><button id="reset" class="secondary">← СМЕНИТЬ ИГРУ</button><button id="localFullscreen" class="secondary">⛶ ПОЛНЫЙ ЭКРАН</button><span id="nowPlaying"></span></div><div id="localGameFrame" class="game-frame"><div id="game" class="emulator-stage"></div></div></section></section>
   </main>
 
   <footer class="footer local-wide"><span>RETROPORTAL &nbsp;—&nbsp; ИГРЫ ОБЪЕДИНЯЮТ</span><span>PLAY &nbsp;•&nbsp; EXPLORE &nbsp;•&nbsp; REPEAT &nbsp; <b>♥</b></span></footer>

@@ -1,16 +1,27 @@
 # Changelog
 
-## 0.5.0 — complete GitHub distribution
+## 0.6.0 — Library Experience Update
 
-- исправлены отсутствующие `docs/` и 404-ссылки в README;
-- добавлены полноценные RU/EN руководства по установке, Nginx/TLS, ROM/BIOS, Dreamcast и диагностике;
-- шесть MIT-лицензированных Mega Drive homebrew ROM теперь реально хранятся в репозитории;
-- installer demo-ROM переведён на проверенные prebuilt release assets с SHA256 validation;
-- EmulatorJS v4.2.3 закреплён как upstream submodule, production installer по-прежнему разворачивает runtime автоматически;
-- добавлен GitHub Pages demo workflow с EmulatorJS и playable homebrew games;
-- добавлена автоматическая генерация README screenshots непосредственно из работающего портала через Playwright;
-- README переведён на реальные `home.png` / `local-rom.png` и дополнен live-demo ссылкой;
-- curated commercial library документирована точными ожидаемыми путями без распространения коммерческих ROM/BIOS/artwork.
+- rebuilt the home page around the actual game library instead of emulator internals;
+- added visible Mega Drive, PlayStation and Dreamcast shelves plus a separate Demo / Homebrew section;
+- added 16 curated classics as installable catalog cards without distributing commercial ROMs, BIOS or official artwork;
+- added clear `Play`, `Add ROM`, `BIOS required` and `Experimental` states;
+- replaced the blurry raster hero with a resolution-independent CSS CRT / warm-room illustration;
+- added title-specific cover fallbacks so missing user artwork never renders as broken images;
+- fixed library/back/exit navigation on both Nginx and GitHub Pages;
+- added fullscreen controls and gamepad connection feedback;
+- simplified public-facing copy: no WASM/WebSocket/SRAM jargon on the first screen;
+- GitHub Pages now mirrors the production library UI and builds its catalog from `catalog/games.json`;
+- added CI checks for shell/JS/JSON/catalog/Docker/Nginx/README assets and links;
+- screenshot workflow now fails on non-200 pages and verifies generated images;
+- bumped project version to `0.6.0`.
+
+## 0.5.0
+
+- repaired missing repository docs and screenshot assets;
+- added redistributable homebrew ROMs to the public repository;
+- added a buildable `gh-pages` branch and public playable demo;
+- pinned EmulatorJS upstream and improved repository completeness checks.
 
 ## 0.4.0 — warm pixel UI
 

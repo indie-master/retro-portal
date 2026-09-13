@@ -55,16 +55,23 @@ async function hydrateGame(game) {
   const biosFiles = Array.isArray(game.bios) ? game.bios : (game.bios ? [game.bios] : []);
   const biosStates = await Promise.all(biosFiles.map((item) => fileExists(BIOS_ROOT, item)));
   const biosInstalled = biosStates.every(Boolean);
-  const playable = installed && biosInstalled;
+  const engine = game.engine || 'emulatorjs';
+  const experimental = engine === 'flycast-wasm' || Boolean(game.experimental);
+  const runtimeReady = !experimental;
+  const playable = installed && biosInstalled && runtimeReady;
+  const status = experimental ? 'experimental' : !installed ? 'rom-missing' : !biosInstalled ? 'bios-missing' : 'ready';
+
   return {
     id: game.id,
     gameId: Number(game.gameId),
     title: game.title,
     system: game.system,
-    engine: game.engine || 'emulatorjs',
+    engine,
     core: game.core,
     rom: game.rom,
-    cover: game.cover || '/covers/placeholder.svg',
+    romExpected: safeRelative(game.rom),
+    biosExpected: biosFiles.map(safeRelative).filter(Boolean),
+    cover: game.cover || '',
     screenshots: Array.isArray(game.screenshots) ? game.screenshots.slice(0, 6) : [],
     year: game.year || '',
     players: game.players || '',
@@ -73,10 +80,14 @@ async function hydrateGame(game) {
     source: game.source || '',
     tags: Array.isArray(game.tags) ? game.tags.slice(0, 16) : [],
     featured: Boolean(game.featured),
+    demo: Boolean(game.demo || (Array.isArray(game.tags) && game.tags.includes('homebrew'))),
+    experimental,
+    status,
     sort: Number.isFinite(Number(game.sort)) ? Number(game.sort) : 9999,
     installed,
     biosRequired: biosFiles.length > 0,
     biosInstalled,
+    runtimeReady,
     playable,
     visible: game.listedWhenMissing !== false || playable,
     romUrl: installed ? publicFileUrl('/roms', game.rom) : null,
@@ -149,11 +160,13 @@ wss.on('connection', (ws) => {
 const heartbeat = setInterval(() => {
   for (const [ws, state] of clients) {
     if (!state.isAlive) { clients.delete(ws); ws.terminate(); continue; }
-    state.isAlive = false; ws.ping();
+    state.isAlive = false;
+    ws.ping();
   }
   broadcastPresence();
 }, 25000);
 
 server.listen(PORT, '0.0.0.0', () => console.log(`Retro Portal backend listening on :${PORT}`));
 function shutdown() { clearInterval(heartbeat); for (const [ws] of clients) ws.close(1001, 'server shutdown'); server.close(() => process.exit(0)); }
-process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
