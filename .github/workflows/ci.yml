@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Install validation tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+      - name: Shell scripts
+        run: |
+          find scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          find scripts -type f -name '*.sh' -print0 | xargs -0 shellcheck -x
+      - name: JavaScript syntax
+        run: |
+          for file in backend/server.js public/*.js pages/*.js; do node --check "$file"; done
+      - name: JSON and catalog
+        run: |
+          python3 -m json.tool catalog/games.json >/dev/null
+          python3 -m json.tool catalog/presets/curated-classics.json >/dev/null
+          python3 scripts/catalog-check.py
+      - name: Docker Compose
+        run: docker compose config >/dev/null
+      - name: Nginx syntax
+        run: |
+          docker run --rm \
+            --add-host backend:127.0.0.1 \
+            -v "$PWD/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "$PWD/public:/usr/share/nginx/html:ro" \
+            -v "$PWD/games/roms:/srv/roms:ro" \
+            -v "$PWD/games/bios:/srv/bios:ro" \
+            -v "$PWD/emulatorjs:/srv/emulatorjs:ro" \
+            nginx:1.29-alpine nginx -t
+      - name: README local links and required assets
+        run: |
+          test -s docs/images/home.png
+          test -s docs/images/local-rom.png
+          python3 - <<'PY'
+          import pathlib,re,sys
+          roots=[pathlib.Path('README.md'),pathlib.Path('README_EN.md')]
+          broken=[]
+          for md in roots:
+              text=md.read_text(encoding='utf-8')
+              for target in re.findall(r'!?(?:\[[^\]]*\])\(([^)]+)\)',text):
+                  target=target.split('#',1)[0].strip()
+                  if not target or '://' in target or target.startswith('mailto:') or target.startswith('#'):
+                      continue
+                  p=(md.parent/target).resolve()
+                  if not p.exists(): broken.append(f'{md}: {target}')
+          if broken:
+              print('Broken local links:',*broken,sep='\n- ')
+              sys.exit(1)
+          PY
