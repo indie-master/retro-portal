@@ -1,53 +1,60 @@
 # Retro Portal
 
-<p align="center"><strong>A cozy self-hosted retro game library that runs directly in the browser.</strong><br>Real artwork for your own games · EmulatorJS · server-hosted ROMs · local ROM player · WebSocket presence · Docker · safe Nginx integration</p>
+<p align="center"><strong>A cozy self-hosted retro game library that runs directly in the browser.</strong></p>
 
 <p align="center">
-  <a href="https://indie-master.github.io/retro-portal/">▶ Live Demo</a> ·
-  <a href="README.md">Русский README</a> ·
-  <a href="docs/en/INSTALL.md">Install</a> ·
-  <a href="docs/en/NGINX.md">Nginx / TLS</a> ·
-  <a href="docs/en/ROMS.md">Games & artwork</a> ·
-  <a href="docs/en/DREAMCAST.md">Dreamcast</a> ·
-  <a href="docs/en/TROUBLESHOOTING.md">Troubleshooting</a>
+  <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 OPEN LIVE DEMO</strong></a>
+  &nbsp;·&nbsp; <a href="README.md">Русский</a>
+  &nbsp;·&nbsp; <a href="docs/en/INSTALL.md">Install</a>
+  &nbsp;·&nbsp; <a href="docs/en/ROMS.md">Games & artwork</a>
+  &nbsp;·&nbsp; <a href="docs/en/NGINX.md">Nginx / TLS</a>
 </p>
 
-![Retro Portal](docs/images/banner.svg)
-
-**Demo:** https://indie-master.github.io/retro-portal/ — a static GitHub Pages build that ships six redistributable homebrew ROMs and EmulatorJS.
-
-![Home](docs/images/home.png)
+![Retro Portal home](docs/images/home.png)
 
 ### Local ROM player
 
-![Local ROM](docs/images/local-rom.png)
+![Local ROM Player](docs/images/local-rom.png)
 
-Retro Portal turns an Ubuntu VPS or home server into a personal browser-based retro library. ROM files, artwork and EmulatorJS are hosted by you while emulation runs on the visitor's device through WebAssembly. No server-side GPU is required.
+## What it is
+
+Retro Portal turns an Ubuntu VPS, mini PC or home server into a personal browser-based retro library. The home page is organized into Mega Drive, PlayStation, Dreamcast and a dedicated **Demo / Homebrew** shelf. If a ROM is present, press **Play**. If it is missing, the card shows the exact expected path instead of a dead button.
+
+Emulation runs on the player's device, so the server does not need a GPU. The server hosts the site, catalog, ROM/BIOS files, artwork and EmulatorJS and provides the catalog API and online presence.
 
 ## Highlights
 
 - warm CRT-inspired UI with subtle 8-bit details;
-- real box-art covers and optional gameplay screenshot-on-hover;
-- shelves by platform, search and a multiplayer filter;
-- one-click launch for server-hosted ROMs;
+- platform shelves for **Mega Drive / PlayStation / Dreamcast / Demo**;
+- 16 preconfigured classic game cards plus six redistributable demo ROMs;
+- user-supplied box art and optional gameplay screenshots;
+- clear **Play / Add ROM / BIOS required / Experimental** states;
 - local ROM player that never uploads the selected ROM to the server;
-- self-hosted EmulatorJS `4.2.3`;
-- six MIT-licensed Mega Drive homebrew ROMs in the repository;
-- WebSocket online/playing presence;
+- self-hosted EmulatorJS `4.2.3` in normal installations;
+- fullscreen and Browser Gamepad API support;
+- browser-side saves and save states;
+- online/playing presence;
 - Docker Compose;
-- interactive installer for fresh servers and existing Nginx deployments;
+- interactive installer for clean servers and existing Nginx deployments;
 - safe handling of `stream :443 + ssl_preread`, PROXY protocol and internal TLS vhosts;
-- existing wildcard/SAN certificate discovery, HTTP-01 and Cloudflare DNS-01;
-- curated metadata presets for popular Mega Drive, PlayStation and experimental Dreamcast titles without shipping commercial game content.
+- wildcard/SAN certificate reuse, Let's Encrypt HTTP-01 and Cloudflare DNS-01;
+- backup and mandatory `nginx -t` before reload;
+- GitHub Pages demo using the same UI as production.
+
+## Live Demo
+
+**https://indie-master.github.io/retro-portal/**
+
+The public demo shows the complete library layout. Commercial titles are catalog cards ready for your own legally obtained ROMs, while the Demo shelf contains six MIT-licensed Mega Drive homebrew games that can be launched immediately.
 
 ## Requirements
 
 | Resource | Minimum | Recommended |
 |---|---:|---:|
-| Ubuntu | 22.04 / 24.04 | 24.04 LTS |
+| Ubuntu | 22.04 | 24.04 LTS |
 | CPU | 1 vCPU | 2 vCPU |
 | RAM | 1 GB | 2 GB |
-| Disk | 15–20 GB | 40+ GB NVMe |
+| Disk | 20 GB | 40+ GB NVMe |
 | Network | 100 Mbps | 1 Gbps |
 | GPU | not required | not required |
 
@@ -56,12 +63,23 @@ Retro Portal turns an Ubuntu VPS or home server into a personal browser-based re
 ```bash
 sudo apt update
 sudo apt install -y git
-git clone https://github.com/indie-master/retro-portal.git retro-portal
+git clone https://github.com/indie-master/retro-portal.git
 cd retro-portal
 sudo ./scripts/install.sh
 ```
 
-For a quick demo:
+The installer offers four modes:
+
+```text
+1) Full automatic setup
+2) Existing Nginx integration
+3) Manual integration — app + generated snippets
+4) Local test without a domain or TLS
+```
+
+See [docs/en/INSTALL.md](docs/en/INSTALL.md).
+
+## Quick local test
 
 ```bash
 ./scripts/install-emulatorjs.sh 4.2.3
@@ -71,27 +89,29 @@ docker compose up -d --build
 
 ## Curated classics
 
-Commercial ROMs, BIOS files and official artwork are not included. `catalog/presets/curated-classics.json` contains metadata and expected file names only. Put your own legally obtained files in the expected paths and run:
+**Mega Drive:** Sonic the Hedgehog 2, Mortal Kombat II, Streets of Rage 2, Comix Zone, Road Rash III, Contra: Hard Corps.
 
-```bash
-./scripts/sync-classics.sh
-```
+**PlayStation:** Tekken 3, Crash Bandicoot 3: Warped, Crash Team Racing, Tony Hawk's Pro Skater 2, Resident Evil 2, Worms Armageddon.
 
-Only titles with an actual ROM, cover and required BIOS are imported, so the UI never associates a game with unrelated artwork.
+**Dreamcast — experimental:** Crazy Taxi, Soulcalibur, Sonic Adventure, Jet Set Radio.
 
-Preset metadata covers Sonic the Hedgehog 2, Mortal Kombat II, Streets of Rage 2, Comix Zone, Road Rash III, Contra: Hard Corps, Tekken 3, Crash Bandicoot 3: Warped, Crash Team Racing, Tony Hawk's Pro Skater 2, Resident Evil 2, Worms Armageddon, Crazy Taxi, Soulcalibur, Sonic Adventure and Jet Set Radio.
+Commercial ROMs, BIOS files and official artwork are **not distributed by this repository**. Expected file names and paths are already present in the catalog. Add your own content and the backend will detect it automatically. See [docs/en/ROMS.md](docs/en/ROMS.md).
 
-See [docs/en/ROMS.md](docs/en/ROMS.md).
+## Demo / Homebrew
+
+Six MIT-licensed Mega Drive ROMs are available for functional testing: Tank Battle, Battle 4Tris, Pong, Snake Arena, Space Shooter and Breakout. They are intentionally kept in a separate demo shelf instead of being presented as the main library.
+
+## Nginx / TLS
+
+The installer inspects `nginx -T` before making changes, understands normal HTTP vhosts as well as `stream :443 + ssl_preread`, and runs `nginx -t` before every reload. If automatic editing is unsafe, it generates a snippet instead of modifying the live configuration. See [docs/en/NGINX.md](docs/en/NGINX.md).
 
 ## Dreamcast
 
-Dreamcast is not part of EmulatorJS's standard supported-system list. Retro Portal already supports Dreamcast catalog metadata and multi-file BIOS checks, while the actual Flycast WASM runtime remains intentionally experimental and disabled by default.
-
-See [docs/en/DREAMCAST.md](docs/en/DREAMCAST.md).
+Catalog metadata, multi-file BIOS checks and UI are ready, but Flycast WASM remains intentionally marked as experimental. See [docs/en/DREAMCAST.md](docs/en/DREAMCAST.md).
 
 ## Legal
 
-Retro Portal itself is software. The public repository does not distribute commercial ROMs, BIOS files or official game artwork. Users are responsible for the content they add.
+Retro Portal is software only. The repository does not distribute commercial ROMs, BIOS files or official artwork. You are responsible for the content you add.
 
 ## License
 
