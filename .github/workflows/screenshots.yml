@@ -1,0 +1,58 @@
+name: Refresh UI screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/screenshots.yml'
+      - 'public/**'
+      - 'catalog/**'
+      - 'backend/**'
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare demo ROMs
+        run: ./scripts/install-homebrew-roms.sh
+      - name: Start Retro Portal
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8088/healthz >/dev/null && exit 0
+            sleep 2
+          done
+          docker compose logs --tail=200
+          exit 1
+      - name: Install Playwright
+        run: |
+          npm --prefix /tmp/shot init -y
+          npm --prefix /tmp/shot install playwright@1.55.0
+          cd /tmp/shot && npx playwright install --with-deps chromium
+      - name: Capture real pages
+        run: |
+          mkdir -p docs/images
+          cat >/tmp/shot/capture.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({ viewport: { width: 1440, height: 1600 }, deviceScaleFactor: 1 });
+          await page.goto('http://127.0.0.1:8088/', {waitUntil:'networkidle'});
+          await page.screenshot({path: process.env.GITHUB_WORKSPACE + '/docs/images/home.png', fullPage:true});
+          await page.goto('http://127.0.0.1:8088/local.html', {waitUntil:'networkidle'});
+          await page.screenshot({path: process.env.GITHUB_WORKSPACE + '/docs/images/local-rom.png', fullPage:true});
+          await browser.close();
+          EOF
+          cd /tmp/shot && node capture.mjs
+      - name: Commit screenshots
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f docs/images/home.png docs/images/local-rom.png
+          git diff --cached --quiet && exit 0
+          git commit -m 'docs: refresh UI screenshots'
+          git push
