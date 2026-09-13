@@ -22,6 +22,15 @@ jobs:
         run: ./scripts/install-homebrew-roms.sh
       - name: Start Retro Portal
         run: |
+          cat >.env <<EOF
+          PORT=8088
+          BIND_ADDR=127.0.0.1
+          PUID=$(id -u)
+          PGID=$(id -g)
+          ADMIN_TOKEN=
+          THEGAMESDB_API_KEY=
+          MAX_UPLOAD_BYTES=2147483648
+          EOF
           docker compose up -d --build
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:8088/healthz >/dev/null && break
