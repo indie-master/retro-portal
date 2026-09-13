@@ -15,7 +15,7 @@
   <img alt="Ubuntu" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white">
   <img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.7.0-71cde2">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.7.1-71cde2">
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
@@ -69,9 +69,12 @@ cat catalog/admin-token
 - сохраняет ROM в нужную папку;
 - автоматически создаёт или обновляет карточку;
 - пытается сопоставить игру с локальным curated preset;
+- при настроенном TheGamesDB автоматически пробует получить название, год, описание, число игроков и box-art;
 - проверяет обязательный BIOS;
 - показывает владельцу точный недостающий файл;
 - публикует игру на главной **только когда она реально готова к запуску**.
+
+Если внешний metadata-provider ничего не нашёл, импорт ROM всё равно считается успешным: остаётся локальная preset/fallback-карточка, а поиск метаданных можно повторить позже.
 
 ### 2. Скопировать большую библиотеку через SCP/SFTP
 
@@ -122,7 +125,7 @@ games/bios/dreamcast/dc_flash.bin
 THEGAMESDB_API_KEY=ваш-api-key
 ```
 
-После этого в Library Manager доступно обогащение метаданных без ручного редактирования карточки.
+После этого при обычной загрузке ROM через Library Manager enrichment запускается автоматически. Ручная кнопка **Обновить метаданные** остаётся для повторного поиска.
 
 ## Возможности
 
@@ -131,9 +134,9 @@ THEGAMESDB_API_KEY=ваш-api-key
 - публично отображаются только playable-игры;
 - owner-only Library Manager;
 - автоматическая регистрация ROM после upload или сканирования папок;
+- автоматическое metadata/box-art enrichment при подключённом provider;
 - диагностика обязательного BIOS;
 - curated presets для популярных Mega Drive / PS1 / Dreamcast игр;
-- опциональное metadata/box-art enrichment;
 - локальный ROM Player — пользовательский файл не отправляется на сервер;
 - self-hosted EmulatorJS `4.2.3` в обычной установке;
 - fullscreen и Browser Gamepad API;
