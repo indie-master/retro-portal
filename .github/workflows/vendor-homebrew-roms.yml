@@ -1,0 +1,28 @@
+name: Vendor free demo ROMs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vendor-homebrew-roms.yml'
+      - 'scripts/install-homebrew-roms.sh'
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download verified MIT-licensed ROMs
+        run: ./scripts/install-homebrew-roms.sh
+      - name: Commit ROMs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f games/roms/tank-battle.bin games/roms/battle-4tris.bin games/roms/pong.bin games/roms/snake-arena.bin games/roms/space-shooter.bin games/roms/breakout.bin
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore: vendor MIT-licensed homebrew demo ROMs'
+          git push
