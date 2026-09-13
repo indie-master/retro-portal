@@ -1,12 +1,12 @@
 # Retro Portal
 
-<p align="center"><strong>A cozy self-hosted retro game library that runs directly in the browser.</strong></p>
+<p align="center"><strong>A cozy self-hosted retro library: the owner curates the collection, players simply press Play.</strong></p>
 
 <p align="center">
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 OPEN LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README.md">Русский</a>
   &nbsp;·&nbsp; <a href="docs/en/INSTALL.md">Install</a>
-  &nbsp;·&nbsp; <a href="docs/en/ROMS.md">Games & artwork</a>
+  &nbsp;·&nbsp; <a href="docs/en/LIBRARY.md">Library Manager</a>
   &nbsp;·&nbsp; <a href="docs/en/NGINX.md">Nginx / TLS</a>
 </p>
 
@@ -16,36 +16,85 @@
 
 ![Local ROM Player](docs/images/local-rom.png)
 
-## What it is
+## How it works
 
-Retro Portal turns an Ubuntu VPS, mini PC or home server into a personal browser-based retro library. The home page is organized into Mega Drive, PlayStation, Dreamcast and a dedicated **Demo / Homebrew** shelf. If a ROM is present, press **Play**. If it is missing, the card shows the exact expected path instead of a dead button.
+Retro Portal separates the **player-facing library** from **collection management**.
 
-Emulation runs on the player's device, so the server does not need a GPU. The server hosts the site, catalog, ROM/BIOS files, artwork and EmulatorJS and provides the catalog API and online presence.
+```text
+Player
+  ↓
+/                     → only games that are ready to play
+/game.html?id=...      → browser emulator
+/local.html            → user's own local ROM; never uploaded
+
+Server owner
+  ↓
+/admin.html             → ROMs, BIOS files, scanning and metadata
+```
+
+The public page never asks a visitor for a BIOS, ROM path or server setup. A title appears in the library only after its required files and runtime are ready.
+
+Emulation runs on the player's device, so the server does not need a GPU.
+
+## Library Manager
+
+After installation open:
+
+```text
+https://your-domain/admin.html
+```
+
+If `ADMIN_TOKEN` was not configured in `.env`, the backend creates a random token on first start:
+
+```bash
+cat catalog/admin-token
+```
+
+The owner can then:
+
+- upload a ROM from the browser;
+- copy large collections over SCP/SFTP and scan folders;
+- automatically create/update catalog cards;
+- see exactly which BIOS file a system requires;
+- upload BIOS files from the owner panel;
+- use curated local metadata when a known title is detected;
+- optionally enrich title/year/description/player count/box art through TheGamesDB.
+
+See **[docs/en/LIBRARY.md](docs/en/LIBRARY.md)**.
+
+## Public library behavior
+
+Only playable games are returned by the public catalog API. Missing ROMs and BIOS diagnostics stay in `/admin.html`.
+
+The separate `/local.html` page remains available for visitors who want to launch their own ROM locally. Their selected file is passed directly to EmulatorJS using a browser object URL and is not uploaded to the server.
 
 ## Highlights
 
 - warm CRT-inspired UI with subtle 8-bit details;
-- platform shelves for **Mega Drive / PlayStation / Dreamcast / Demo**;
-- 16 preconfigured classic game cards plus six redistributable demo ROMs;
-- user-supplied box art and optional gameplay screenshots;
-- clear **Play / Add ROM / BIOS required / Experimental** states;
-- local ROM player that never uploads the selected ROM to the server;
-- self-hosted EmulatorJS `4.2.3` in normal installations;
-- fullscreen and Browser Gamepad API support;
+- platform shelves and search;
+- player-facing catalog contains only ready titles;
+- protected owner-only Library Manager;
+- automatic ROM registration after upload or folder scan;
+- BIOS dependency diagnostics;
+- curated presets for selected Mega Drive / PlayStation / Dreamcast titles;
+- optional metadata and box-art enrichment;
+- local ROM player;
+- self-hosted EmulatorJS `4.2.3` in normal installs;
+- fullscreen and Browser Gamepad API;
 - browser-side saves and save states;
 - online/playing presence;
 - Docker Compose;
-- interactive installer for clean servers and existing Nginx deployments;
-- safe handling of `stream :443 + ssl_preread`, PROXY protocol and internal TLS vhosts;
+- interactive installation for clean servers and existing Nginx deployments;
+- safe support for `stream :443 + ssl_preread`, PROXY protocol and internal TLS vhosts;
 - wildcard/SAN certificate reuse, Let's Encrypt HTTP-01 and Cloudflare DNS-01;
-- backup and mandatory `nginx -t` before reload;
-- GitHub Pages demo using the same UI as production.
+- mandatory `nginx -t` before reload;
+- GitHub Pages playable demo.
 
 ## Live Demo
 
 **https://indie-master.github.io/retro-portal/**
 
-The public demo shows the complete library layout. Commercial titles are catalog cards ready for your own legally obtained ROMs, while the Demo shelf contains six MIT-licensed Mega Drive homebrew games that can be launched immediately.
+The GitHub Pages build displays only demo/homebrew games that are actually playable. Commercial ROMs, BIOS files and official artwork are not included in the public repository or demo.
 
 ## Requirements
 
@@ -79,15 +128,9 @@ The installer offers four modes:
 
 See [docs/en/INSTALL.md](docs/en/INSTALL.md).
 
-## Quick local test
+## Curated presets
 
-```bash
-./scripts/install-emulatorjs.sh 4.2.3
-./scripts/install-homebrew-roms.sh
-docker compose up -d --build
-```
-
-## Curated classics
+Metadata presets are included for:
 
 **Mega Drive:** Sonic the Hedgehog 2, Mortal Kombat II, Streets of Rage 2, Comix Zone, Road Rash III, Contra: Hard Corps.
 
@@ -95,23 +138,29 @@ docker compose up -d --build
 
 **Dreamcast — experimental:** Crazy Taxi, Soulcalibur, Sonic Adventure, Jet Set Radio.
 
-Commercial ROMs, BIOS files and official artwork are **not distributed by this repository**. Expected file names and paths are already present in the catalog. Add your own content and the backend will detect it automatically. See [docs/en/ROMS.md](docs/en/ROMS.md).
+These are metadata presets, not ROMs. When the owner supplies a matching image, the Library Manager can use the prepared metadata.
 
-## Demo / Homebrew
+## Optional automatic artwork
 
-Six MIT-licensed Mega Drive ROMs are available for functional testing: Tank Battle, Battle 4Tris, Pong, Snake Arena, Space Shooter and Breakout. They are intentionally kept in a separate demo shelf instead of being presented as the main library.
+Set a TheGamesDB API key on the backend:
+
+```ini
+THEGAMESDB_API_KEY=your-api-key
+```
+
+The key is server-side only. Without an external provider, unknown games still receive a generated fallback card based on the ROM filename.
 
 ## Nginx / TLS
 
-The installer inspects `nginx -T` before making changes, understands normal HTTP vhosts as well as `stream :443 + ssl_preread`, and runs `nginx -t` before every reload. If automatic editing is unsafe, it generates a snippet instead of modifying the live configuration. See [docs/en/NGINX.md](docs/en/NGINX.md).
+The installer inspects `nginx -T` before changing a live configuration, supports conventional HTTPS vhosts and `stream :443 + ssl_preread`, and always runs `nginx -t` before reload. See [docs/en/NGINX.md](docs/en/NGINX.md).
 
 ## Dreamcast
 
-Catalog metadata, multi-file BIOS checks and UI are ready, but Flycast WASM remains intentionally marked as experimental. See [docs/en/DREAMCAST.md](docs/en/DREAMCAST.md).
+Catalog and multi-file BIOS checks are ready, but Flycast WASM remains intentionally marked experimental. See [docs/en/DREAMCAST.md](docs/en/DREAMCAST.md).
 
 ## Legal
 
-Retro Portal is software only. The repository does not distribute commercial ROMs, BIOS files or official artwork. You are responsible for the content you add.
+Retro Portal is software only. The repository does not distribute commercial ROMs, BIOS files or official artwork. The server owner is responsible for the content they add.
 
 ## License
 
