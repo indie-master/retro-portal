@@ -1,0 +1,69 @@
+name: Deploy GitHub Pages demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build static demo
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq p7zip-full
+          mkdir -p _site/roms _site/emulatorjs _site/covers _site/assets
+          cp public/index.html public/game.html public/local.html public/styles.css public/styles-base.css public/styles-library.css public/styles-local.css public/styles-responsive.css public/styles-art.css _site/
+          cp -a public/covers/. _site/covers/
+          cp -a public/assets/. _site/assets/
+          cp pages/app.js _site/app.js
+          cp pages/game.js _site/game.js
+          cp pages/local.js _site/local.js
+          cp pages/presence.js _site/presence.js
+          # Convert root-absolute links to project-relative links for GitHub Pages.
+          sed -i -e 's|href="/|href="|g' -e 's|src="/|src="|g' _site/*.html
+          sed -i -e "s|url('/|url('|g" _site/*.css
+          # Free, MIT-licensed demo ROMs.
+          BASE='https://github.com/monteslu/retro-homebrew-games/releases/download/build-26'
+          curl -fL "$BASE/tank-battle.bin" -o _site/roms/tank-battle.bin
+          curl -fL "$BASE/battle-4tris.bin" -o _site/roms/battle-4tris.bin
+          curl -fL "$BASE/pong.bin" -o _site/roms/pong.bin
+          curl -fL "$BASE/snake.bin" -o _site/roms/snake-arena.bin
+          curl -fL "$BASE/space-shooter.bin" -o _site/roms/space-shooter.bin
+          curl -fL "$BASE/breakout.bin" -o _site/roms/breakout.bin
+          # Official EmulatorJS stable runtime.
+          curl -fL 'https://cdn.emulatorjs.org/releases/4.2.3.7z' -o /tmp/ejs.7z
+          mkdir -p /tmp/ejs
+          7z x -y /tmp/ejs.7z -o/tmp/ejs >/dev/null
+          LOADER="$(find /tmp/ejs -type f -path '*/data/loader.js' -print -quit)"
+          test -n "$LOADER"
+          cp -a "$(dirname "$LOADER")" _site/emulatorjs/data
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
