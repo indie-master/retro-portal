@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.1 — Automatic metadata
+
+- when a ROM is uploaded through Library Manager and TheGamesDB is configured, metadata enrichment now runs automatically;
+- successful enrichment immediately updates the title/year/description/player count and local box-art;
+- metadata lookup failures no longer block the ROM import: the generated/preset card remains usable and can be refreshed later;
+- retained a manual **Update metadata** action for retries;
+- bumped project version to `0.7.1`.
+
 ## 0.7.0 — Library Manager
 
 - split the portal into a player-facing library and an owner-only `/admin.html` Library Manager;
