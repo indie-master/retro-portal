@@ -2,6 +2,9 @@
 .env.*
 !.env.example
 
+# Runtime secrets
+catalog/admin-token
+
 # Runtime emulator data
 emulatorjs/data/
 emulatorjs/VERSION
