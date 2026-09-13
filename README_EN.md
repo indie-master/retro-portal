@@ -58,7 +58,7 @@ The owner can then:
 - see exactly which BIOS file a system requires;
 - upload BIOS files from the owner panel;
 - use curated local metadata when a known title is detected;
-- optionally enrich title/year/description/player count/box art through TheGamesDB.
+- automatically enrich title/year/description/player count/box art through TheGamesDB when it is configured.
 
 See **[docs/en/LIBRARY.md](docs/en/LIBRARY.md)**.
 
@@ -77,7 +77,7 @@ The separate `/local.html` page remains available for visitors who want to launc
 - automatic ROM registration after upload or folder scan;
 - BIOS dependency diagnostics;
 - curated presets for selected Mega Drive / PlayStation / Dreamcast titles;
-- optional metadata and box-art enrichment;
+- automatic metadata and box-art enrichment when a provider is configured;
 - local ROM player;
 - self-hosted EmulatorJS `4.2.3` in normal installs;
 - fullscreen and Browser Gamepad API;
@@ -140,7 +140,7 @@ Metadata presets are included for:
 
 These are metadata presets, not ROMs. When the owner supplies a matching image, the Library Manager can use the prepared metadata.
 
-## Optional automatic artwork
+## Automatic artwork
 
 Set a TheGamesDB API key on the backend:
 
@@ -148,7 +148,7 @@ Set a TheGamesDB API key on the backend:
 THEGAMESDB_API_KEY=your-api-key
 ```
 
-The key is server-side only. Without an external provider, unknown games still receive a generated fallback card based on the ROM filename.
+The key is server-side only. After this is configured, a ROM uploaded through Library Manager automatically triggers metadata/box-art enrichment. If the provider cannot find a match, the imported ROM remains available with its local preset/fallback card and enrichment can be retried later.
 
 ## Nginx / TLS
 
