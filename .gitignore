@@ -2,8 +2,9 @@
 .env.*
 !.env.example
 
-# Runtime secrets
+# Runtime secrets and mutable catalog
 catalog/admin-token
+catalog/runtime-games.json
 
 # Runtime emulator data
 emulatorjs/data/
