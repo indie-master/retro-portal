@@ -1,0 +1,3 @@
+[submodule "emulatorjs-upstream"]
+	path = vendor/emulatorjs-upstream
+	url = https://github.com/EmulatorJS/EmulatorJS.git
