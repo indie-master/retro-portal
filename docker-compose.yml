@@ -3,15 +3,23 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
     environment:
       PORT: "3000"
-      CATALOG_FILE: /data/games.json
+      CATALOG_FILE: /data/runtime-games.json
+      CATALOG_TEMPLATE_FILE: /data/games.json
+      PRESET_FILE: /data/presets/curated-classics.json
       ROM_ROOT: /roms
       BIOS_ROOT: /bios
+      COVER_ROOT: /covers
+      ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
+      THEGAMESDB_API_KEY: "${THEGAMESDB_API_KEY:-}"
+      MAX_UPLOAD_BYTES: "${MAX_UPLOAD_BYTES:-2147483648}"
     volumes:
-      - ./catalog:/data:ro
-      - ./games/roms:/roms:ro
-      - ./games/bios:/bios:ro
+      - ./catalog:/data
+      - ./games/roms:/roms
+      - ./games/bios:/bios
+      - ./public/covers/library:/covers
     expose:
       - "3000"
 

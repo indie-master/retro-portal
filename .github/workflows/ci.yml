@@ -21,12 +21,20 @@ jobs:
           find scripts -type f -name '*.sh' -print0 | xargs -0 shellcheck -x -S error
       - name: JavaScript syntax
         run: |
-          for file in backend/server.js public/*.js pages/*.js; do node --check "$file"; done
+          for file in backend/*.js public/*.js pages/*.js; do node --check "$file"; done
       - name: JSON and catalog
         run: |
           python3 -m json.tool catalog/games.json >/dev/null
           python3 -m json.tool catalog/presets/curated-classics.json >/dev/null
           python3 scripts/catalog-check.py
+      - name: Library manager files
+        run: |
+          test -s public/admin.html
+          test -s public/admin.js
+          test -s public/admin.css
+          test -s docs/ru/LIBRARY.md
+          test -s docs/en/LIBRARY.md
+          grep -q 'catalog/admin-token' .gitignore
       - name: Docker Compose
         run: docker compose config >/dev/null
       - name: Nginx syntax
@@ -39,6 +47,40 @@ jobs:
             -v "$PWD/games/bios:/srv/bios:ro" \
             -v "$PWD/emulatorjs:/srv/emulatorjs:ro" \
             nginx:1.29-alpine nginx -t
+      - name: Runtime library manager integration
+        run: |
+          cat >.env <<EOF
+          PORT=18088
+          BIND_ADDR=127.0.0.1
+          PUID=$(id -u)
+          PGID=$(id -g)
+          ADMIN_TOKEN=
+          THEGAMESDB_API_KEY=
+          MAX_UPLOAD_BYTES=2147483648
+          EOF
+          docker compose up -d --build
+          trap 'docker compose logs --tail=120 || true; docker compose down -v || true' EXIT
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:18088/healthz >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:18088/healthz >/dev/null
+          test -s catalog/admin-token
+          TOKEN="$(cat catalog/admin-token)"
+          test "${#TOKEN}" -ge 32
+          curl -fsS http://127.0.0.1:18088/api/games > /tmp/public-games.json
+          curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18088/api/admin/status > /tmp/admin-status.json
+          curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18088/api/admin/games > /tmp/admin-games.json
+          python3 - <<'PY'
+          import json
+          public=json.load(open('/tmp/public-games.json'))['games']
+          admin=json.load(open('/tmp/admin-games.json'))['games']
+          status=json.load(open('/tmp/admin-status.json'))
+          assert all(g.get('playable') for g in public), 'public API exposed a non-playable title'
+          assert len(admin) >= len(public), 'admin catalog should be at least as large as public catalog'
+          assert status.get('ok') is True
+          assert 'systems' in status and 'summary' in status
+          PY
       - name: README local links and required assets
         run: |
           test -s docs/images/home.png

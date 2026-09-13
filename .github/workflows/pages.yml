@@ -29,28 +29,27 @@ jobs:
           cp pages/game.js _site/game.js
           cp pages/local.js _site/local.js
           cp pages/presence.js _site/presence.js
-          cp -a games/roms/. _site/roms/
+          cp games/roms/tank-battle.bin games/roms/battle-4tris.bin games/roms/pong.bin games/roms/snake-arena.bin games/roms/space-shooter.bin games/roms/breakout.bin _site/roms/
           python3 - <<'PY'
           import json, pathlib
           root = pathlib.Path('.')
           data = json.loads((root/'catalog/games.json').read_text())
           out = []
           for game in data.get('games', []):
+              is_demo = bool(game.get('demo') or 'homebrew' in game.get('tags', []))
+              if not is_demo:
+                  continue
               g = dict(game)
-              bios = g.get('bios', [])
-              if isinstance(bios, str): bios = [bios]
               installed = (root/'games/roms'/g.get('rom','')).is_file()
-              bios_installed = all((root/'games/bios'/b).is_file() for b in bios)
-              experimental = g.get('engine') == 'flycast-wasm' or bool(g.get('experimental'))
-              g['demo'] = bool(g.get('demo') or 'homebrew' in g.get('tags', []))
-              g['installed'] = installed
-              g['biosRequired'] = bool(bios)
-              g['biosInstalled'] = bios_installed
-              g['experimental'] = experimental
-              g['playable'] = installed and bios_installed and not experimental
-              g['romExpected'] = g.get('rom','')
-              g['biosExpected'] = bios
-              g['romUrl'] = f"roms/{g['rom']}" if installed else None
+              if not installed:
+                  continue
+              g['demo'] = True
+              g['installed'] = True
+              g['biosRequired'] = False
+              g['biosInstalled'] = True
+              g['experimental'] = False
+              g['playable'] = True
+              g['romUrl'] = f"roms/{g['rom']}"
               if g.get('cover'): g['cover'] = g['cover'].lstrip('/')
               g['screenshots'] = [s.lstrip('/') for s in g.get('screenshots', [])]
               out.append(g)
@@ -61,7 +60,8 @@ jobs:
           touch _site/.nojekyll
           cat > _site/README.txt <<'EOF'
           Retro Portal GitHub Pages demo.
-          The public demo shows the complete classics catalog as installable cards and runs six MIT-licensed homebrew ROMs.
+          Only games that are actually playable in the public demo are displayed.
+          The six included ROMs are MIT-licensed homebrew titles.
           EmulatorJS runtime is loaded from the official stable CDN only in the GitHub Pages build.
           EOF
       - name: Publish gh-pages branch

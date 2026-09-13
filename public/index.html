@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07131a">
   <title>Retro Portal</title>
-  <meta name="description" content="Ламповая self-hosted библиотека ретро-игр, которая запускается прямо в браузере.">
+  <meta name="description" content="Ламповая браузерная библиотека ретро-игр.">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="home-page">
@@ -16,7 +16,6 @@
     <symbol id="i-monitor" viewBox="0 0 24 24"><path d="M3 4h18v13H13v2h4v2H7v-2h4v-2H3V4Zm2 2v9h14V6H5Z" fill="currentColor"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 5h7l2 2h9v12H3V5Zm2 4v8h14V9H5Z" fill="currentColor"/></symbol>
     <symbol id="i-save" viewBox="0 0 24 24"><path d="M3 3h15l3 3v15H3V3Zm3 2v6h10V5H6Zm1 9v5h10v-5H7Zm7-8h2v3h-2V6Z" fill="currentColor"/></symbol>
-    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   </svg>
 
   <header class="topbar">
@@ -30,10 +29,10 @@
   <main>
     <section class="hero-section"><div class="shell hero-grid">
       <div class="hero-copy">
-        <p class="eyebrow">САМОСТОЯТЕЛЬНЫЙ РЕТРО-АРКАДНЫЙ ПОРТАЛ</p>
+        <p class="eyebrow">РЕТРО-ИГРЫ ПРЯМО В БРАУЗЕРЕ</p>
         <h1>Выбрал.<br>Нажал.<br><span>Играешь.</span></h1>
-        <p class="lead">Личная библиотека любимых консолей — прямо в браузере. Добавь свои игры на сервер или выбери ROM с устройства и просто играй.</p>
-        <div class="hero-actions"><a class="primary" href="#library"><svg><use href="#i-gamepad"/></svg> ОТКРЫТЬ БИБЛИОТЕКУ <b>→</b></a><a class="secondary" href="/local.html"><svg><use href="#i-folder"/></svg> ЗАГРУЗИТЬ ROM</a></div>
+        <p class="lead">Открывай готовую библиотеку, выбирай игру и запускай её одним кликом. Никаких BIOS, файлов и настроек для обычного игрока.</p>
+        <div class="hero-actions"><a class="primary" href="#library"><svg><use href="#i-gamepad"/></svg> ОТКРЫТЬ БИБЛИОТЕКУ <b>→</b></a><a class="secondary" href="/local.html"><svg><use href="#i-folder"/></svg> СВОЙ ROM</a></div>
         <div class="motto"><span>GOOD GAMES<br>BETTER DAYS</span><i></i></div>
       </div>
       <div class="hero-art" aria-label="Ламповая ретро-комната с CRT-телевизором">
@@ -45,8 +44,8 @@
 
     <div class="shell content-shell">
       <section class="stats-row" aria-label="Статистика портала">
-        <article><svg class="stat-icon"><use href="#i-gamepad"/></svg><div><strong id="catalogCount">0</strong><small>ИГР В КОЛЛЕКЦИИ</small></div></article>
-        <article><svg class="stat-icon"><use href="#i-save"/></svg><div><strong id="availableCount">0</strong><small>ДОСТУПНО СЕЙЧАС</small></div></article>
+        <article><svg class="stat-icon"><use href="#i-gamepad"/></svg><div><strong id="catalogCount">0</strong><small>ИГР В БИБЛИОТЕКЕ</small></div></article>
+        <article><svg class="stat-icon"><use href="#i-save"/></svg><div><strong id="availableCount">0</strong><small>ГОТОВО К ЗАПУСКУ</small></div></article>
         <article><svg class="stat-icon"><use href="#i-users"/></svg><div><strong id="onlineStat">0</strong><small>ИГРОКОВ ОНЛАЙН</small></div></article>
         <article><svg class="stat-icon"><use href="#i-monitor"/></svg><div><strong>В БРАУЗЕРЕ</strong><small>БЕЗ УСТАНОВКИ КЛИЕНТА</small></div></article>
       </section>
@@ -64,18 +63,6 @@
       </section>
     </div>
   </main>
-
-  <div id="gameModal" class="modal" hidden>
-    <div class="modal-backdrop" data-close-modal></div>
-    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <button class="modal-close" type="button" aria-label="Закрыть" data-close-modal><svg><use href="#i-close"/></svg></button>
-      <p class="eyebrow">ДОБАВЛЕНИЕ ИГРЫ</p><h3 id="modalTitle">Игра</h3><p id="modalText"></p>
-      <div class="path-box"><small>ОЖИДАЕМЫЙ ROM</small><code id="modalRom"></code></div>
-      <div id="modalBiosBox" class="path-box" hidden><small>НУЖНЫЙ BIOS</small><code id="modalBios"></code></div>
-      <p class="modal-hint">После добавления файлов выполните <code>./scripts/sync-classics.sh</code> или просто обновите страницу — backend сам проверит наличие ROM/BIOS.</p>
-      <button class="secondary" type="button" data-close-modal>ПОНЯТНО</button>
-    </section>
-  </div>
 
   <footer class="footer shell"><span>RETROPORTAL &nbsp;—&nbsp; ИГРЫ ОБЪЕДИНЯЮТ</span><span>PLAY &nbsp;•&nbsp; EXPLORE &nbsp;•&nbsp; REPEAT &nbsp; <b>♥</b></span></footer>
   <script src="/presence.js"></script><script src="/app.js"></script>

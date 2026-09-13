@@ -1,12 +1,12 @@
 # Retro Portal
 
-<p align="center"><strong>Ламповая self-hosted библиотека ретро-игр, которая запускается прямо в браузере.</strong></p>
+<p align="center"><strong>Ламповая self-hosted библиотека ретро-игр: владелец собирает коллекцию, игроки просто нажимают «Играть».</strong></p>
 
 <p align="center">
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 ОТКРЫТЬ LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README_EN.md">English</a>
   &nbsp;·&nbsp; <a href="docs/ru/INSTALL.md">Установка</a>
-  &nbsp;·&nbsp; <a href="docs/ru/ROMS.md">Игры и обложки</a>
+  &nbsp;·&nbsp; <a href="docs/ru/LIBRARY.md">Library Manager</a>
   &nbsp;·&nbsp; <a href="docs/ru/NGINX.md">Nginx / TLS</a>
 </p>
 
@@ -15,6 +15,7 @@
   <img alt="Ubuntu" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white">
   <img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.7.0-71cde2">
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
@@ -23,36 +24,132 @@
 
 ![Local ROM Player](docs/images/local-rom.png)
 
-## Что это
+## Как это работает
 
-Retro Portal превращает Ubuntu VPS, мини-ПК или домашний сервер в личную ретро-библиотеку. На главной находятся привычные полки Mega Drive, PlayStation, Dreamcast и отдельный раздел **Demo / Homebrew**. Если ROM уже добавлен владельцем сервера — нажмите **Играть**. Если нет — портал покажет ожидаемый путь к файлу вместо мёртвой кнопки.
+Retro Portal разделяет **игровой интерфейс** и **управление коллекцией**.
 
-Эмуляция выполняется на устройстве игрока, поэтому серверу не требуется GPU. Сервер хранит сайт, каталог, ROM/BIOS, artwork и EmulatorJS, а также обслуживает API и online-presence.
+```text
+Игрок
+  ↓
+/                     → только готовые к запуску игры
+/game.html?id=...      → запуск в браузере
+/local.html            → свой локальный ROM, без загрузки на сервер
+
+Владелец сервера
+  ↓
+/admin.html             → ROM, BIOS, сканирование и метаданные
+```
+
+На публичной странице нет `НЕТ ROM`, `НУЖЕН BIOS`, путей к файлам или других администраторских деталей. Если игра ещё не подготовлена владельцем сервера, посетитель её просто не видит.
+
+Эмуляция выполняется на устройстве игрока, поэтому серверу не требуется GPU. Сервер хранит сайт, ROM/BIOS, каталог, artwork и EmulatorJS, а также обслуживает API и online-presence.
+
+## Library Manager
+
+После установки откройте:
+
+```text
+https://ваш-домен/admin.html
+```
+
+Если `ADMIN_TOKEN` не был указан в `.env`, backend создаст случайный токен при первом запуске:
+
+```bash
+cat catalog/admin-token
+```
+
+Дальше есть два нормальных сценария.
+
+### 1. Загрузить ROM через браузер
+
+В Library Manager выберите файл и платформу. Для `.nes`, `.gba`, `.md` и других однозначных форматов система определяется автоматически. Для `.chd`, `.bin`, `.cue` и других неоднозначных форматов нужно указать консоль.
+
+После загрузки Retro Portal:
+
+- сохраняет ROM в нужную папку;
+- автоматически создаёт или обновляет карточку;
+- пытается сопоставить игру с локальным curated preset;
+- проверяет обязательный BIOS;
+- показывает владельцу точный недостающий файл;
+- публикует игру на главной **только когда она реально готова к запуску**.
+
+### 2. Скопировать большую библиотеку через SCP/SFTP
+
+```text
+games/roms/megadrive/
+games/roms/ps1/
+games/roms/dreamcast/
+games/roms/nes/
+games/roms/snes/
+...
+```
+
+После копирования нажмите **Сканировать** в `/admin.html`. Новые файлы будут автоматически зарегистрированы без ручного редактирования JSON.
+
+Подробно: **[docs/ru/LIBRARY.md](docs/ru/LIBRARY.md)**.
+
+## BIOS
+
+BIOS — забота владельца сервера, а не игрока. Library Manager показывает его только в административной панели.
+
+Для известных PS1 BIOS менеджер умеет распознавать файл по MD5 и сохранять под каноническим именем. Например, карточка может ожидать:
+
+```text
+games/bios/ps1/scph5501.bin
+```
+
+Dreamcast-профиль сейчас ожидает:
+
+```text
+games/bios/dreamcast/dc_boot.bin
+games/bios/dreamcast/dc_flash.bin
+```
+
+Сам Dreamcast runtime пока отмечен как experimental.
+
+## Автоматические карточки и обложки
+
+Без внешних сервисов портал уже умеет:
+
+- узнать подготовленные игры из `catalog/presets/curated-classics.json`;
+- создать карточку неизвестной игры из имени ROM;
+- определить платформу по однозначному расширению;
+- автоматически скрывать неготовые игры от посетителей.
+
+Опционально можно подключить **TheGamesDB** для автоматического поиска названия, года, описания, количества игроков и box-art. API key остаётся только на backend:
+
+```ini
+THEGAMESDB_API_KEY=ваш-api-key
+```
+
+После этого в Library Manager доступно обогащение метаданных без ручного редактирования карточки.
 
 ## Возможности
 
-- тёплый CRT-интерфейс без неонового SaaS-вида;
-- библиотека по платформам: **Mega Drive / PlayStation / Dreamcast / Demo**;
-- 16 заранее подготовленных карточек известных игр и шесть легально распространяемых demo-ROM;
-- user-supplied box-art и gameplay screenshots;
-- явные состояния **Играть / Добавить ROM / Нужен BIOS / Experimental**;
-- локальный ROM Player — выбранный файл не отправляется на сервер;
+- тёплый CRT-интерфейс с лёгкими 8-bit деталями;
+- библиотека по платформам и поиск;
+- публично отображаются только playable-игры;
+- owner-only Library Manager;
+- автоматическая регистрация ROM после upload или сканирования папок;
+- диагностика обязательного BIOS;
+- curated presets для популярных Mega Drive / PS1 / Dreamcast игр;
+- опциональное metadata/box-art enrichment;
+- локальный ROM Player — пользовательский файл не отправляется на сервер;
 - self-hosted EmulatorJS `4.2.3` в обычной установке;
 - fullscreen и Browser Gamepad API;
 - browser-side сохранения / save states;
 - online/playing presence;
 - Docker Compose;
-- интерактивная установка для чистого VPS и уже работающего Nginx;
-- обнаружение `stream :443 + ssl_preread`, PROXY protocol и внутренних TLS-vhost;
-- переиспользование wildcard/SAN сертификата, Let's Encrypt HTTP-01 и Cloudflare DNS-01;
-- backup и обязательный `nginx -t` перед reload;
-- GitHub Pages demo с тем же UI, что и production.
+- безопасная интеграция в обычный Nginx или `stream :443 + ssl_preread`;
+- wildcard/SAN certificate reuse, Let's Encrypt HTTP-01 и Cloudflare DNS-01;
+- обязательный `nginx -t` перед reload;
+- GitHub Pages demo.
 
 ## Live Demo
 
 **https://indie-master.github.io/retro-portal/**
 
-Публичная версия показывает весь каталог. Коммерческие игры отображаются как готовые карточки под ваши собственные ROM, а отдельная секция Demo содержит шесть MIT-лицензированных Mega Drive homebrew-игр, которые можно запустить сразу.
+GitHub Pages показывает только те demo/homebrew игры, которые действительно можно запустить. Коммерческие ROM, BIOS и официальные artwork в публичный demo и репозиторий не входят.
 
 ## Требования
 
@@ -75,7 +172,7 @@ cd retro-portal
 sudo ./scripts/install.sh
 ```
 
-Установщик предложит четыре режима:
+Установщик предложит:
 
 ```text
 1) Полная автоматическая установка
@@ -86,7 +183,7 @@ sudo ./scripts/install.sh
 
 Подробно: [docs/ru/INSTALL.md](docs/ru/INSTALL.md).
 
-## Быстрый локальный тест
+## Быстрый тест с открытыми demo-ROM
 
 ```bash
 ./scripts/install-emulatorjs.sh 4.2.3
@@ -94,46 +191,23 @@ sudo ./scripts/install.sh
 docker compose up -d --build
 ```
 
-После запуска откройте `http://127.0.0.1:8088/` через SSH-туннель или используйте режим Local Test установщика.
+В demo доступны шесть MIT-лицензированных Mega Drive homebrew-игр: Tank Battle, Battle 4Tris, Pong, Snake Arena, Space Shooter и Breakout.
 
-## Подготовленная коллекция
+## Подготовленные presets
 
-### Mega Drive
+В проекте уже есть metadata presets для:
 
-Sonic the Hedgehog 2 · Mortal Kombat II · Streets of Rage 2 · Comix Zone · Road Rash III · Contra: Hard Corps
+**Mega Drive:** Sonic the Hedgehog 2 · Mortal Kombat II · Streets of Rage 2 · Comix Zone · Road Rash III · Contra: Hard Corps
 
-### PlayStation
+**PlayStation:** Tekken 3 · Crash Bandicoot 3: Warped · Crash Team Racing · Tony Hawk's Pro Skater 2 · Resident Evil 2 · Worms Armageddon
 
-Tekken 3 · Crash Bandicoot 3: Warped · Crash Team Racing · Tony Hawk's Pro Skater 2 · Resident Evil 2 · Worms Armageddon
+**Dreamcast — experimental:** Crazy Taxi · Soulcalibur · Sonic Adventure · Jet Set Radio
 
-### Dreamcast — experimental
-
-Crazy Taxi · Soulcalibur · Sonic Adventure · Jet Set Radio
-
-Коммерческие ROM, BIOS и официальные artwork **не распространяются этим репозиторием**. Карточки и ожидаемые пути уже подготовлены. Положите собственные файлы по именам из каталога; backend сам проверит наличие файлов. Для синхронизации пользовательского artwork и presets можно выполнить:
-
-```bash
-./scripts/sync-classics.sh all
-```
-
-Подробнее: [docs/ru/ROMS.md](docs/ru/ROMS.md).
-
-## Demo / Homebrew
-
-В репозитории могут быть установлены шесть MIT-лицензированных тестовых ROM:
-
-- Tank Battle
-- Battle 4Tris
-- Pong
-- Snake Arena
-- Space Shooter
-- Breakout
-
-Они вынесены в отдельную секцию и нужны для проверки реального запуска эмулятора, а не как основная витрина проекта.
+Это **метаданные**, а не ROM. Если владелец загружает соответствующий образ, Library Manager может использовать preset для корректной карточки.
 
 ## Nginx и TLS
 
-Retro Portal не должен ломать уже работающий сервер. Установщик сначала анализирует `nginx -T`, определяет существующие listener'ы и только затем выбирает безопасный сценарий.
+Установщик сначала анализирует `nginx -T`, а не переписывает живую конфигурацию вслепую.
 
 ```text
 Обычная схема:
@@ -143,26 +217,26 @@ Internet :443 → Nginx HTTPS → 127.0.0.1:8088 → Retro Portal
 Internet :443 → Nginx stream + ssl_preread → inner HTTPS → Retro Portal
 ```
 
-Перед reload всегда выполняется `nginx -t`. Если автоматическая интеграция небезопасна, installer создаёт готовый snippet вместо переписывания текущего конфига. Подробнее: [docs/ru/NGINX.md](docs/ru/NGINX.md).
+Перед reload всегда выполняется `nginx -t`. Если автоматическая интеграция небезопасна, installer создаёт готовый snippet. Подробнее: [docs/ru/NGINX.md](docs/ru/NGINX.md).
 
 ## Полезные команды
 
 ```bash
+cat catalog/admin-token
 ./scripts/doctor.sh --domain arcade.example.com
 sudo ./scripts/nginx-detect.sh arcade.example.com
 python3 ./scripts/catalog-check.py
-./scripts/sync-classics.sh all
 ./scripts/backup.sh
 docker compose logs -f --tail=100
 ```
 
 ## Dreamcast
 
-Каталог, multi-file BIOS checks и UI готовы, но Flycast WASM пока отмечен как experimental и не выдаётся за production-ready runtime. См. [docs/ru/DREAMCAST.md](docs/ru/DREAMCAST.md).
+Каталог и multi-file BIOS checks готовы, но Flycast WASM пока считается experimental и не публикуется как production-ready runtime. См. [docs/ru/DREAMCAST.md](docs/ru/DREAMCAST.md).
 
 ## Правовой момент
 
-Retro Portal — программная оболочка. Репозиторий не распространяет коммерческие ROM, BIOS или официальные artwork. Пользователь самостоятельно отвечает за права на добавленный контент.
+Retro Portal — программная оболочка. Репозиторий не распространяет коммерческие ROM, BIOS или официальные artwork. Владелец сервера самостоятельно отвечает за право использования добавленного контента.
 
 ## Лицензия
 

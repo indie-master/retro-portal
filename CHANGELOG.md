@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0 — Library Manager
+
+- split the portal into a player-facing library and an owner-only `/admin.html` Library Manager;
+- public `/api/games` now returns only games that are fully playable;
+- removed missing-ROM/BIOS setup states from the public library;
+- added protected admin APIs using `ADMIN_TOKEN`;
+- added browser ROM uploads with upload progress and platform detection;
+- added recursive server-side ROM folder scanning for collections copied through SCP/SFTP;
+- added automatic catalog registration from ROM filenames and curated presets;
+- added owner-only BIOS diagnostics with exact expected file paths;
+- added known PlayStation BIOS MD5 recognition and canonical naming;
+- added BIOS upload through the Library Manager;
+- added optional TheGamesDB metadata / box-art enrichment without exposing the API key to visitors;
+- added automatic persistent admin-token generation when no explicit token is configured;
+- added configurable upload limit and backend PUID/PGID;
+- GitHub Pages now shows only demo titles that are actually playable instead of unavailable commercial placeholders;
+- added RU/EN Library Manager documentation;
+- bumped project version to `0.7.0`.
+
 ## 0.6.0 — Library Experience Update
 
 - rebuilt the home page around the actual game library instead of emulator internals;
