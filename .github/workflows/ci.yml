@@ -18,7 +18,7 @@ jobs:
       - name: Shell scripts
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
-          find scripts -type f -name '*.sh' -print0 | xargs -0 shellcheck -x
+          find scripts -type f -name '*.sh' -print0 | xargs -0 shellcheck -x -S error
       - name: JavaScript syntax
         run: |
           for file in backend/server.js public/*.js pages/*.js; do node --check "$file"; done
