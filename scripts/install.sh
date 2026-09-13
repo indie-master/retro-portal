@@ -1,0 +1,432 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/common.sh
+source "$ROOT_DIR/scripts/lib/common.sh"
+# shellcheck source=lib/nginx.sh
+source "$ROOT_DIR/scripts/lib/nginx.sh"
+
+MODE=''
+DOMAIN=''
+TLS_MODE='auto'
+EMAIL=''
+CF_CREDENTIALS=''
+CERT_PATH=''
+KEY_PATH=''
+APP_PORT='8088'
+BIND_ADDR='127.0.0.1'
+INNER_TLS_PORT=''
+INSTALL_DEMOS='ask'
+EMULATOR_VERSION='4.2.3'
+ASSUME_YES=0
+SKIP_EMULATOR=0
+
+usage() {
+  cat <<'TXT'
+Retro Portal installer
+
+Usage:
+  sudo ./scripts/install.sh
+  sudo ./scripts/install.sh --mode full --domain arcade.example.com
+  sudo ./scripts/install.sh --mode existing --domain arcade.example.com --tls existing
+  ./scripts/install.sh --mode local
+
+Modes:
+  full       Install/verify Docker + Nginx, start the portal, configure a new vhost and TLS.
+  existing   Keep the current Nginx topology, inspect it and integrate safely when possible.
+  manual     Start the portal only and generate Nginx snippets; do not edit host Nginx.
+  local      Local test mode. No domain/TLS; binds to 0.0.0.0:8088 unless --bind is given.
+
+TLS modes:
+  auto               Reuse a matching existing certificate; otherwise ask what to do.
+  existing           Discover an existing matching wildcard/SAN certificate.
+  certbot-http        Issue with HTTP-01 using a temporary ACME webroot.
+  certbot-cloudflare  Issue through the Certbot Cloudflare DNS plugin.
+  custom             Use --cert and --key.
+  none               HTTP only (standard Nginx profile only).
+
+Options:
+  --domain FQDN
+  --tls MODE
+  --email ADDRESS
+  --cloudflare-credentials FILE
+  --cert FILE --key FILE
+  --port PORT
+  --bind ADDRESS
+  --inner-tls-port PORT
+  --demo-roms / --no-demo-roms
+  --emulator-version VERSION
+  --skip-emulator
+  --yes
+  -h, --help
+TXT
+}
+
+while (($#)); do
+  case "$1" in
+    --mode) MODE="${2:-}"; shift 2;;
+    --domain) DOMAIN="${2:-}"; shift 2;;
+    --tls) TLS_MODE="${2:-}"; shift 2;;
+    --email) EMAIL="${2:-}"; shift 2;;
+    --cloudflare-credentials) CF_CREDENTIALS="${2:-}"; shift 2;;
+    --cert) CERT_PATH="${2:-}"; shift 2;;
+    --key) KEY_PATH="${2:-}"; shift 2;;
+    --port) APP_PORT="${2:-}"; shift 2;;
+    --bind) BIND_ADDR="${2:-}"; shift 2;;
+    --inner-tls-port) INNER_TLS_PORT="${2:-}"; shift 2;;
+    --demo-roms) INSTALL_DEMOS=1; shift;;
+    --no-demo-roms) INSTALL_DEMOS=0; shift;;
+    --emulator-version) EMULATOR_VERSION="${2:-}"; shift 2;;
+    --skip-emulator) SKIP_EMULATOR=1; shift;;
+    --yes|-y) ASSUME_YES=1; shift;;
+    -h|--help) usage; exit 0;;
+    *) die "Unknown option: $1 (use --help)";;
+  esac
+done
+
+interactive_mode() {
+  echo
+  printf '%bRetro Portal setup%b\n\n' "$C_BOLD" "$C_RESET"
+  echo '1) Full automatic setup (Docker + Nginx + TLS)'
+  echo '2) Integrate into an existing Nginx installation'
+  echo '3) App only; generate manual Nginx snippets'
+  echo '4) Local test on port 8088'
+  local choice
+  read -r -p 'Choose [1-4]: ' choice
+  case "$choice" in
+    1) MODE=full;;
+    2) MODE=existing;;
+    3) MODE=manual;;
+    4) MODE=local; BIND_ADDR=0.0.0.0;;
+    *) die 'Invalid selection.';;
+  esac
+}
+
+[[ -n "$MODE" ]] || interactive_mode
+[[ "$MODE" =~ ^(full|existing|manual|local)$ ]] || die "Invalid mode: $MODE"
+[[ "$APP_PORT" =~ ^[0-9]+$ ]] && ((APP_PORT>=1024 && APP_PORT<=65535)) || die "Invalid application port: $APP_PORT"
+
+if [[ "$MODE" == local && "$BIND_ADDR" == 127.0.0.1 && $ASSUME_YES -eq 0 ]]; then
+  BIND_ADDR=0.0.0.0
+fi
+
+if [[ "$MODE" != local ]]; then
+  if [[ -z "$DOMAIN" && $ASSUME_YES -eq 0 ]]; then read -r -p 'Portal domain (example: arcade.example.com): ' DOMAIN; fi
+  [[ -n "$DOMAIN" ]] || die 'A domain is required for this mode.'
+  validate_domain "$DOMAIN" || die "Invalid domain: $DOMAIN"
+fi
+
+install_base_packages() {
+  require_root
+  [[ -r /etc/os-release ]] || die 'Cannot detect operating system.'
+  # shellcheck disable=SC1091
+  source /etc/os-release
+  [[ "${ID:-}" == ubuntu ]] || die 'Automatic system package installation currently supports Ubuntu only.'
+  info 'Installing/verifying base packages...'
+  apt-get update
+  apt-get install -y ca-certificates curl git jq openssl p7zip-full python3 unzip
+  if [[ "$MODE" == full ]] && ! have nginx; then apt-get install -y nginx; fi
+}
+
+ensure_base_tools() {
+  local missing=()
+  local cmd
+  for cmd in curl git jq openssl 7z python3 unzip; do
+    have "$cmd" || missing+=("$cmd")
+  done
+  ((${#missing[@]}==0)) && return 0
+  if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+    install_base_packages
+    return
+  fi
+  die "Missing required tools: ${missing[*]}. Install them or re-run with sudo."
+}
+
+ensure_docker() {
+  if have docker && docker compose version >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    ok 'Docker Engine is ready.'
+    return
+  fi
+  if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+    die 'Docker is missing/unavailable. Install Docker or re-run this setup with sudo.'
+  fi
+  "$ROOT_DIR/scripts/install-docker.sh"
+}
+
+write_env() {
+  cat >"$ROOT_DIR/.env" <<EOF2
+# Generated by scripts/install.sh
+PORT=$APP_PORT
+BIND_ADDR=$BIND_ADDR
+EOF2
+  ok "Runtime configuration written to .env ($BIND_ADDR:$APP_PORT)."
+}
+
+start_portal() {
+  write_env
+  if ((SKIP_EMULATOR==0)); then
+    if [[ ! -f "$ROOT_DIR/emulatorjs/data/loader.js" ]]; then
+      info "Installing EmulatorJS $EMULATOR_VERSION..."
+      "$ROOT_DIR/scripts/install-emulatorjs.sh" "$EMULATOR_VERSION"
+    else
+      ok "EmulatorJS is already installed ($(cat "$ROOT_DIR/emulatorjs/VERSION" 2>/dev/null || echo unknown))."
+    fi
+  fi
+
+  local demos="$INSTALL_DEMOS"
+  if [[ "$demos" == ask ]]; then
+    if ((ASSUME_YES)); then demos=0
+    elif ask_yes_no 'Install/build the six open-source demo ROMs?' y; then demos=1; else demos=0; fi
+  fi
+  if [[ "$demos" == 1 ]]; then "$ROOT_DIR/scripts/install-homebrew-roms.sh"; fi
+
+  info 'Building and starting portal containers...'
+  (cd "$ROOT_DIR" && docker compose up -d --build)
+  local i
+  for i in {1..20}; do
+    if curl -fsS "http://127.0.0.1:$APP_PORT/healthz" >/dev/null 2>&1; then
+      ok "Portal is healthy on 127.0.0.1:$APP_PORT."
+      return
+    fi
+    sleep 1
+  done
+  (cd "$ROOT_DIR" && docker compose logs --tail=100) || true
+  die 'Portal containers started, but the local health check failed.'
+}
+
+nginx_target_file() {
+  local safe_domain="${DOMAIN//[^A-Za-z0-9.-]/_}"
+  if [[ -f /etc/nginx/nginx.conf ]] && grep -Eq 'include[[:space:]]+/etc/nginx/sites-enabled/[^;]*' /etc/nginx/nginx.conf; then
+    printf '/etc/nginx/sites-available/retro-portal-%s.conf\n' "$safe_domain"
+  elif [[ -f /etc/nginx/nginx.conf ]] && grep -Eq 'include[[:space:]]+/etc/nginx/conf\.d/[^;]*' /etc/nginx/nginx.conf; then
+    printf '/etc/nginx/conf.d/retro-portal-%s.conf\n' "$safe_domain"
+  else
+    return 1
+  fi
+}
+
+enable_target_if_needed() {
+  local target="$1"
+  if [[ "$target" == /etc/nginx/sites-available/* ]]; then
+    mkdir -p /etc/nginx/sites-enabled
+    ln -sfn "$target" "/etc/nginx/sites-enabled/$(basename "$target")"
+  fi
+}
+
+disable_target_if_needed() {
+  local target="$1"
+  if [[ "$target" == /etc/nginx/sites-available/* ]]; then
+    rm -f "/etc/nginx/sites-enabled/$(basename "$target")"
+  fi
+}
+
+apply_nginx_config() {
+  local rendered="$1" target backup_dir old_exists=0
+  target="$(nginx_target_file)" || die 'Could not identify an enabled Nginx include directory. Use --mode manual and include the generated snippet yourself.'
+  backup_dir="$ROOT_DIR/.installer-backups/nginx"
+  mkdir -p "$backup_dir" "$(dirname "$target")"
+  [[ -e "$target" ]] && old_exists=1
+  backup_file "$target" "$backup_dir"
+  cp "$rendered" "$target"
+  enable_target_if_needed "$target"
+  if ! nginx -t; then
+    fail 'The generated Nginx configuration did not pass nginx -t. Rolling it back.'
+    if ((old_exists)); then
+      local latest
+      latest="$(ls -1t "$backup_dir/$(basename "$target")".*.bak 2>/dev/null | head -1 || true)"
+      [[ -n "$latest" ]] && cp -a "$latest" "$target"
+    else
+      rm -f "$target"
+      disable_target_if_needed "$target"
+    fi
+    nginx -t || true
+    exit 1
+  fi
+  if ! systemctl reload nginx; then
+    fail 'Nginx syntax was valid, but reload failed. Rolling the generated vhost back.'
+    if ((old_exists)); then
+      local latest
+      latest="$(ls -1t "$backup_dir/$(basename "$target")".*.bak 2>/dev/null | head -1 || true)"
+      [[ -n "$latest" ]] && cp -a "$latest" "$target"
+    else
+      rm -f "$target"
+      disable_target_if_needed "$target"
+    fi
+    nginx -t || true
+    systemctl reload nginx || true
+    exit 1
+  fi
+  ok "Nginx configuration installed: $target"
+}
+
+cert_key_match() {
+  local cert="$1" key="$2" a b
+  a="$(openssl x509 -in "$cert" -pubkey -noout | openssl pkey -pubin -outform DER 2>/dev/null | sha256sum | awk '{print $1}')" || return 1
+  b="$(openssl pkey -in "$key" -pubout -outform DER 2>/dev/null | sha256sum | awk '{print $1}')" || return 1
+  [[ -n "$a" && "$a" == "$b" ]]
+}
+
+validate_certificate_pair() {
+  [[ -f "$CERT_PATH" ]] || die "Certificate file not found: $CERT_PATH"
+  [[ -f "$KEY_PATH" ]] || die "Private key file not found: $KEY_PATH"
+  openssl x509 -in "$CERT_PATH" -noout -checkhost "$DOMAIN" >/dev/null 2>&1 || die "Certificate does not cover $DOMAIN"
+  cert_key_match "$CERT_PATH" "$KEY_PATH" || die 'Certificate and private key do not match.'
+  if ! openssl x509 -in "$CERT_PATH" -noout -checkend 604800 >/dev/null 2>&1; then warn 'Certificate expires in less than 7 days.'; fi
+}
+
+pick_existing_certificate() {
+  local matches line
+  matches="$(find_matching_certs "$DOMAIN" || true)"
+  [[ -n "$matches" ]] || return 1
+  line="$(head -1 <<<"$matches")"
+  IFS='|' read -r _ CERT_PATH KEY_PATH _ <<<"$line"
+  validate_certificate_pair
+  ok "Using existing certificate: $CERT_PATH"
+}
+
+ensure_certbot() {
+  have certbot || "$ROOT_DIR/scripts/install-certbot.sh"
+}
+
+install_acme_http_bootstrap() {
+  local acme_root="$1" tmp
+  mkdir -p "$acme_root"
+  tmp="$(mktemp)"
+  render_template "$ROOT_DIR/templates/nginx/standard-http.conf.tpl" "$tmp" \
+    DOMAIN "$DOMAIN" ACME_ROOT "$acme_root" APP_PORT "$APP_PORT"
+  apply_nginx_config "$tmp"
+  rm -f "$tmp"
+}
+
+issue_cert_http() {
+  local acme_root='/var/www/retro-portal-acme'
+  if [[ -n "$NGINX_INSPECT_JSON" && "$(nginx_json_bool stream_80)" == true ]]; then
+    die 'Nginx stream already owns public port 80. HTTP-01 cannot be configured safely; use DNS-01 or an existing certificate.'
+  fi
+  ensure_certbot
+  install_acme_http_bootstrap "$acme_root"
+  if [[ -z "$EMAIL" && $ASSUME_YES -eq 0 ]]; then read -r -p "Email for Let's Encrypt notices: " EMAIL; fi
+  [[ -n "$EMAIL" ]] || die '--email is required for non-interactive certificate issuance.'
+  info "Requesting a Let's Encrypt certificate for $DOMAIN using HTTP-01..."
+  certbot certonly --webroot -w "$acme_root" -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --keep-until-expiring
+  pick_existing_certificate || die "Certbot succeeded, but the new certificate could not be discovered."
+}
+
+issue_cert_cloudflare() {
+  ensure_certbot
+  if [[ -z "$CF_CREDENTIALS" && $ASSUME_YES -eq 0 ]]; then read -r -p 'Path to Cloudflare Certbot credentials INI: ' CF_CREDENTIALS; fi
+  [[ -f "$CF_CREDENTIALS" ]] || die 'Cloudflare credentials file is required.'
+  chmod 600 "$CF_CREDENTIALS"
+  if ! certbot plugins 2>/dev/null | grep -q 'dns-cloudflare'; then
+    if have snap && snap list certbot >/dev/null 2>&1; then
+      snap set certbot trust-plugin-with-root=ok
+      snap install certbot-dns-cloudflare || snap refresh certbot-dns-cloudflare
+    else
+      die 'Certbot is installed, but its dns-cloudflare plugin is missing. Install the plugin for your Certbot distribution or use an existing certificate.'
+    fi
+  fi
+  if [[ -z "$EMAIL" && $ASSUME_YES -eq 0 ]]; then read -r -p "Email for Let's Encrypt notices: " EMAIL; fi
+  [[ -n "$EMAIL" ]] || die '--email is required for non-interactive certificate issuance.'
+  info "Requesting a Let's Encrypt certificate for $DOMAIN using Cloudflare DNS-01..."
+  certbot certonly --dns-cloudflare --dns-cloudflare-credentials "$CF_CREDENTIALS" \
+    -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --keep-until-expiring
+  pick_existing_certificate || die "Certbot succeeded, but the new certificate could not be discovered."
+}
+
+choose_tls_mode() {
+  if [[ "$TLS_MODE" == auto ]]; then
+    if pick_existing_certificate; then TLS_MODE=existing; return; fi
+    if ((ASSUME_YES)); then TLS_MODE=certbot-http; return; fi
+    echo
+    echo "No currently installed certificate matched $DOMAIN."
+    echo "1) Let's Encrypt HTTP-01 (easiest when DNS already points to this server)"
+    echo "2) Let's Encrypt DNS-01 with Cloudflare credentials"
+    echo '3) Use certificate/key files I already have'
+    echo '4) HTTP only (not recommended; unavailable behind TLS stream frontends)'
+    local choice
+    read -r -p 'Choose [1-4]: ' choice
+    case "$choice" in
+      1) TLS_MODE=certbot-http;; 2) TLS_MODE=certbot-cloudflare;; 3) TLS_MODE=custom;; 4) TLS_MODE=none;; *) die 'Invalid TLS selection.';;
+    esac
+  fi
+  case "$TLS_MODE" in
+    existing) pick_existing_certificate || die "No existing certificate matching $DOMAIN was found.";;
+    custom)
+      if [[ -z "$CERT_PATH" && $ASSUME_YES -eq 0 ]]; then read -r -p 'Certificate/fullchain path: ' CERT_PATH; fi
+      if [[ -z "$KEY_PATH" && $ASSUME_YES -eq 0 ]]; then read -r -p 'Private key path: ' KEY_PATH; fi
+      validate_certificate_pair;;
+    certbot-http|certbot-cloudflare|none) ;;
+    *) die "Invalid TLS mode: $TLS_MODE";;
+  esac
+}
+
+generate_manual_files() {
+  local out="$ROOT_DIR/generated"
+  mkdir -p "$out"
+  render_template "$ROOT_DIR/templates/nginx/existing-server-locations.inc.tpl" "$out/$DOMAIN.locations.conf" DOMAIN "$DOMAIN" APP_PORT "$APP_PORT"
+  ok "Manual reverse-proxy snippet: generated/$DOMAIN.locations.conf"
+}
+
+configure_nginx() {
+  require_root
+  have nginx || die 'Nginx is not installed.'
+  inspect_nginx || die 'nginx -T failed. Fix the existing Nginx configuration before integration.'
+  local domain_files profile='standard' tmp acme_root='/var/www/retro-portal-acme'
+  domain_files="$(nginx_domain_files "$DOMAIN" || true)"
+  if [[ "$(nginx_json_bool stream_443)" == true ]]; then profile='stream'; fi
+  info "Detected Nginx profile: $profile"
+  if [[ -n "$domain_files" ]]; then
+    warn "$DOMAIN already exists in Nginx. The installer will not rewrite an arbitrary existing server block."
+    printf '%s\n' "$domain_files" | sed 's/^/  existing: /'
+    generate_manual_files
+    warn "Add/include the generated locations in the existing vhost, run 'nginx -t', then reload Nginx."
+    return
+  fi
+  choose_tls_mode
+  if [[ "$TLS_MODE" == certbot-http ]]; then issue_cert_http; fi
+  if [[ "$TLS_MODE" == certbot-cloudflare ]]; then issue_cert_cloudflare; fi
+  if [[ "$profile" == standard ]]; then
+    tmp="$(mktemp)"
+    if [[ "$TLS_MODE" == none ]]; then
+      mkdir -p "$acme_root"
+      render_template "$ROOT_DIR/templates/nginx/standard-http.conf.tpl" "$tmp" DOMAIN "$DOMAIN" ACME_ROOT "$acme_root" APP_PORT "$APP_PORT"
+    else
+      validate_certificate_pair
+      render_template "$ROOT_DIR/templates/nginx/standard-https.conf.tpl" "$tmp" DOMAIN "$DOMAIN" ACME_ROOT "$acme_root" APP_PORT "$APP_PORT" CERT_PATH "$CERT_PATH" KEY_PATH "$KEY_PATH"
+    fi
+    apply_nginx_config "$tmp"; rm -f "$tmp"
+  else
+    [[ "$TLS_MODE" != none ]] || die 'A stream/SNI frontend needs TLS at the inner HTTPS endpoint. Choose a certificate method.'
+    validate_certificate_pair
+    [[ -n "$INNER_TLS_PORT" ]] || INNER_TLS_PORT="$(nginx_inner_https_listener)"
+    [[ -n "$INNER_TLS_PORT" ]] || INNER_TLS_PORT=8443
+    [[ "$INNER_TLS_PORT" =~ ^[0-9]+$ ]] || die 'Invalid inner TLS port.'
+    local pp_suffix='' real_ip=''
+    if [[ "$(nginx_json_bool stream_443_proxy_protocol)" == true ]]; then pp_suffix=' proxy_protocol'; real_ip=$'    set_real_ip_from 127.0.0.1;\n    real_ip_header proxy_protocol;'; fi
+    tmp="$(mktemp)"
+    render_template "$ROOT_DIR/templates/nginx/stream-inner-https.conf.tpl" "$tmp" DOMAIN "$DOMAIN" INNER_TLS_PORT "$INNER_TLS_PORT" PROXY_PROTOCOL_SUFFIX "$pp_suffix" REAL_IP_BLOCK "$real_ip" ACME_ROOT "$acme_root" APP_PORT "$APP_PORT" CERT_PATH "$CERT_PATH" KEY_PATH "$KEY_PATH"
+    apply_nginx_config "$tmp"; rm -f "$tmp"
+    mkdir -p "$ROOT_DIR/generated"
+    render_template "$ROOT_DIR/templates/nginx/stream-map-example.conf.tpl" "$ROOT_DIR/generated/$DOMAIN.stream-map-example.conf" DOMAIN "$DOMAIN" INNER_TLS_PORT "$INNER_TLS_PORT"
+    warn "Public :443 is owned by Nginx stream. The inner HTTPS vhost is ready on 127.0.0.1:$INNER_TLS_PORT."
+    warn "Check your existing ssl_preread/SNI map. An example is in generated/$DOMAIN.stream-map-example.conf"
+  fi
+}
+
+main() {
+  echo; info "Mode: $MODE"; [[ -n "$DOMAIN" ]] && info "Domain: $DOMAIN"
+  if [[ "$MODE" =~ ^(full|existing)$ ]]; then install_base_packages; else ensure_base_tools; fi
+  ensure_docker; start_portal
+  case "$MODE" in
+    full) have nginx || die 'Nginx installation failed.'; configure_nginx;;
+    existing) configure_nginx;;
+    manual) [[ -n "$DOMAIN" ]] && generate_manual_files;;
+    local) warn "Local test mode exposes the portal on $BIND_ADDR:$APP_PORT without TLS. Do not leave this exposed unnecessarily.";;
+  esac
+  echo; ok 'Installation stage completed.'
+  if [[ "$MODE" == local ]]; then echo "Open: http://SERVER_IP:$APP_PORT/"; elif [[ -n "$DOMAIN" ]]; then echo "Target URL: https://$DOMAIN/"; fi
+  echo "Run diagnostics: $ROOT_DIR/scripts/doctor.sh${DOMAIN:+ --domain $DOMAIN} --port $APP_PORT"
+}
+
+main

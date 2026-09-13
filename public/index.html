@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07131a">
+  <title>Retro Portal</title>
+  <meta name="description" content="Self-hosted retro arcade portal powered by browser emulation.">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="home-page">
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-alien" viewBox="0 0 24 24"><path d="M8 3h2v2h4V3h2v2h2v2h2v8h-2v2h-3v-3H9v3H6v-2H4V7h2V5h2V3Zm0 6v2h2V9H8Zm6 0v2h2V9h-2Z" fill="currentColor"/></symbol>
+    <symbol id="i-gamepad" viewBox="0 0 24 24"><path d="M7 7h10c2 0 3 1 4 4l1 4c.7 3-1 5-3 5-2 0-3-2-4-3H9c-1 1-2 3-4 3-2 0-3.7-2-3-5l1-4c1-3 2-4 4-4Zm1 4H6v2H4v2h2v2h2v-2h2v-2H8v-2Zm8 1h2v2h-2v-2Zm-3 3h2v2h-2v-2Z" fill="currentColor"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM1 21v-2c0-4 3-6 7-6s7 2 7 6v2H1Zm14 0v-2c0-2-.6-3.5-1.8-4.7.8-.2 1.8-.3 2.8-.3 4 0 7 2 7 6v1h-8Z" fill="currentColor"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><path d="M3 4h18v13H13v2h4v2H7v-2h4v-2H3V4Zm2 2v9h14V6H5Z" fill="currentColor"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.8 6h-3c-.3-1.4-.8-2.7-1.4-3.7A8.1 8.1 0 0 1 18.8 8ZM12 4c.8 1 1.5 2.3 1.8 4h-3.6c.3-1.7 1-3 1.8-4ZM9.6 4.3A14.9 14.9 0 0 0 8.2 8h-3a8.1 8.1 0 0 1 4.4-3.7ZM4.3 10H8v4H4.3a8.8 8.8 0 0 1 0-4Zm.9 6h3c.3 1.4.8 2.7 1.4 3.7A8.1 8.1 0 0 1 5.2 16Zm6.8 4c-.8-1-1.5-2.3-1.8-4h3.6c-.3 1.7-1 3-1.8 4Zm2.2-6H9.8v-4h4.4v4Zm.2 5.7c.6-1 1.1-2.3 1.4-3.7h3a8.1 8.1 0 0 1-4.4 3.7Zm1.4-5.7v-4h3.9a8.8 8.8 0 0 1 0 4h-3.9Z" fill="currentColor"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 5h7l2 2h9v12H3V5Zm2 4v8h14V9H5Z" fill="currentColor"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M3 3h15l3 3v15H3V3Zm3 2v6h10V5H6Zm1 9v5h10v-5H7Zm7-8h2v3h-2V6Z" fill="currentColor"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3h2v11H4V10h2Zm2 0h8V7a4 4 0 0 0-8 0v3Zm3 4v4h2v-4h-2Z" fill="currentColor"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 5 13h6l-1 9 9-12h-6l0-8Z" fill="currentColor"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/" aria-label="Retro Portal"><svg class="brand-mark"><use href="#i-alien"/></svg><span>RETRO</span><strong>PORTAL</strong></a>
+      <nav class="topnav" aria-label="Навигация"><a href="#library">Библиотека</a><a href="/local.html">Локальный ROM</a></nav>
+      <div class="status"><i id="statusDot"></i><span id="connection">В СЕТИ</span><svg><use href="#i-users"/></svg><strong id="online">0</strong><em>ИГРОКА</em></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero-section"><div class="shell hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">САМОСТОЯТЕЛЬНЫЙ РЕТРО-АРКАДНЫЙ ПОРТАЛ</p>
+        <h1>Выбрал.<br>Нажал.<br><span>Играешь.</span></h1>
+        <p class="lead">Игры хранятся на сервере и запускаются прямо в браузере. Эмуляция идёт локально на устройстве игрока, поэтому сервер занимается только быстрой раздачей ROM/WASM и живой сессией портала.</p>
+        <div class="hero-actions"><a class="primary" href="#library"><svg><use href="#i-gamepad"/></svg> ОТКРЫТЬ БИБЛИОТЕКУ <b>→</b></a><a class="secondary" href="/local.html"><svg><use href="#i-folder"/></svg> ЗАГРУЗИТЬ ROM</a></div>
+        <div class="motto"><span>GOOD GAMES<br>BETTER DAYS</span><i></i></div>
+      </div>
+      <div class="hero-art" role="img" aria-label="Ретро-комната с CRT-монитором и геймпадом"></div>
+    </div></section>
+
+    <div class="shell content-shell">
+      <section class="stats-row" aria-label="Статистика портала">
+        <article><svg class="stat-icon"><use href="#i-gamepad"/></svg><div><strong id="installedCount">0</strong><small>УСТАНОВЛЕННЫХ ИГР</small></div></article>
+        <article><svg class="stat-icon"><use href="#i-users"/></svg><div><strong id="playingCount">0</strong><small>ИГРАЮТ СЕЙЧАС</small></div></article>
+        <article><svg class="stat-icon"><use href="#i-monitor"/></svg><div><strong>ЛОКАЛЬНО</strong><small>ЭМУЛЯЦИЯ В БРАУЗЕРЕ</small></div></article>
+        <article><svg class="stat-icon"><use href="#i-globe"/></svg><div><strong>WASM</strong><small>ЭМУЛЯТОРЫ / RETROARCH</small></div></article>
+      </section>
+
+      <section id="library" class="library-section">
+        <div class="section-heading"><div><p class="eyebrow arcade-label"><svg><use href="#i-alien"/></svg> БИБЛИОТЕКА ИГР</p><h2>Аркадная полка</h2></div><div id="filters" class="filters"></div></div>
+        <label class="search-box"><span>⌕</span><input id="search" type="search" placeholder="Найти игру" autocomplete="off"></label>
+        <div id="libraryContent"><div class="loading-card">Загружаем библиотеку…</div></div>
+      </section>
+
+      <section class="info-strip">
+        <div><svg class="info-icon"><use href="#i-save"/></svg><div><small>ЛОКАЛЬНЫЕ СОХРАНЕНИЯ</small><strong>Состояния SRAM остаются в браузере</strong></div></div>
+        <div><svg class="info-icon"><use href="#i-gamepad"/></svg><div><small>ГЕЙМПАД</small><strong>USB / Bluetooth контроллеры через Browser Gamepad API</strong></div></div>
+        <div><svg class="info-icon"><use href="#i-users"/></svg><div><small>ОНЛАЙН-ПРИСУТСТВИЕ</small><strong>Живая WebSocket-сессия, пока открыт портал</strong></div></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer shell"><span>RETROPORTAL &nbsp;—&nbsp; ИГРЫ ОБЪЕДИНЯЮТ</span><span>PLAY &nbsp;•&nbsp; EXPLORE &nbsp;•&nbsp; REPEAT &nbsp; <b>♥</b></span></footer>
+  <script src="/presence.js"></script><script src="/app.js"></script>
+</body>
+</html>
