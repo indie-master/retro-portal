@@ -1,0 +1,42 @@
+.env
+.env.*
+!.env.example
+
+# Runtime emulator data
+emulatorjs/data/
+emulatorjs/VERSION
+flycast-wasm/*
+!flycast-wasm/.gitkeep
+
+# User-supplied games, BIOS and artwork
+games/roms/**/*
+!games/roms/**/.gitkeep
+games/bios/**/*
+!games/bios/**/.gitkeep
+public/covers/library/*
+!public/covers/library/.gitkeep
+public/screenshots/library/*
+!public/screenshots/library/.gitkeep
+
+# Generated installer output / backups
+generated/
+.installer-backups/
+
+# Node
+backend/node_modules/
+npm-debug.log*
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary
+*.tmp
+*.swp
+*.bak
+
+# Python
+__pycache__/
+*.py[cod]
