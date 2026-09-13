@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 — complete GitHub distribution
+
+- исправлены отсутствующие `docs/` и 404-ссылки в README;
+- добавлены полноценные RU/EN руководства по установке, Nginx/TLS, ROM/BIOS, Dreamcast и диагностике;
+- шесть MIT-лицензированных Mega Drive homebrew ROM теперь реально хранятся в репозитории;
+- installer demo-ROM переведён на проверенные prebuilt release assets с SHA256 validation;
+- EmulatorJS v4.2.3 закреплён как upstream submodule, production installer по-прежнему разворачивает runtime автоматически;
+- добавлен GitHub Pages demo workflow с EmulatorJS и playable homebrew games;
+- добавлена автоматическая генерация README screenshots непосредственно из работающего портала через Playwright;
+- README переведён на реальные `home.png` / `local-rom.png` и дополнен live-demo ссылкой;
+- curated commercial library документирована точными ожидаемыми путями без распространения коммерческих ROM/BIOS/artwork.
+
 ## 0.4.0 — warm pixel UI
 
 - интерфейс главной и локального ROM-плеера приведён к утверждённому warm-retro макету;
