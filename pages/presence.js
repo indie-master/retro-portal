@@ -1,0 +1,1 @@
+document.addEventListener('DOMContentLoaded',()=>{const c=document.querySelector('#connection'),d=document.querySelector('#statusDot'),o=document.querySelector('#online');if(c)c.textContent='DEMO';if(d)d.classList.add('online');if(o)o.textContent='4'});window.RetroPresence={playing(){},idle(){}};
