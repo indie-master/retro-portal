@@ -6,8 +6,9 @@
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 OPEN LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README.md">Русский</a>
   &nbsp;·&nbsp; <a href="docs/en/INSTALL.md">Install</a>
+  &nbsp;·&nbsp; <a href="docs/en/SCALING.md">Scaling</a>
+  &nbsp;·&nbsp; <a href="docs/en/UPDATE.md">Update</a>
   &nbsp;·&nbsp; <a href="docs/en/UNINSTALL.md">Remove / migrate</a>
-  &nbsp;·&nbsp; <a href="docs/en/LIBRARY.md">Library Manager</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
 </p>
 
@@ -16,7 +17,7 @@
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.1-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.9.0-71cde2"></a>
 </p>
 
 ![Retro Portal home](docs/images/home.png)
@@ -25,7 +26,7 @@
 
 Retro Portal turns a VPS, mini PC, or home server into a clean browser-based retro game library. A player opens the site, picks a title, and presses **Play**; emulation runs on the player's device in the browser.
 
-The project is built for everyday use: library shelves, search, filters, saves, keyboard/gamepad controls, live activity, launch statistics, and a separate owner dashboard.
+The project works as a simple single-node deployment by default and can also scale out: one control/origin node owns the library, admin/API and live state while optional edge nodes or a CDN distribute ROMs, EmulatorJS runtime, artwork and other cacheable assets.
 
 ## Features
 
@@ -40,6 +41,10 @@ The project is built for everyday use: library shelves, search, filters, saves, 
 - Library Manager for ROMs, BIOS files, cards, and publishing;
 - optional metadata proposals from TheGamesDB/Wikipedia with owner approval;
 - Docker Compose, Nginx, and multiple installation modes;
+- single-node mode with no extra infrastructure;
+- optional control/origin + edge + CDN/LB scale-out;
+- SSH/rsync library replication without copying control-node secrets;
+- rolling control/edge updates with health checks and rollback attempts;
 - conservative uninstall/migration workflow that avoids global Docker or Nginx cleanup.
 
 ## Live Demo
@@ -79,8 +84,6 @@ The installer supports full setup, integration with an existing Nginx installati
 
 ### Option 2 — Docker Compose
 
-If Docker Engine/Compose and a reverse proxy are already available:
-
 ```bash
 git clone https://github.com/indie-master/retro-portal.git
 cd retro-portal
@@ -91,21 +94,73 @@ docker compose up -d
 curl -i http://127.0.0.1:8088/healthz
 ```
 
-A common production layout keeps the app on `127.0.0.1:8088` and terminates HTTPS in host Nginx/Caddy/Traefik.
-
 Full setup guide: **[docs/en/INSTALL.md](docs/en/INSTALL.md)**.
+
+## Scaling
+
+Single-node remains the default. For higher bandwidth/file-I/O loads, add stateless edge nodes:
+
+```text
+                  CDN / Load Balancer
+                         │
+            ┌────────────┼────────────┐
+            │            │            │
+          EDGE-1       EDGE-2       EDGE-N
+       static/ROM    static/ROM    static/ROM
+            └────────────┬────────────┘
+                         │ API / WS
+                         ▼
+                  CONTROL / ORIGIN
+                 backend + admin + stats
+```
+
+Edge nodes serve cacheable files locally and proxy small API/WebSocket traffic to control/origin. Admin endpoints are disabled on edges. Because all presence traffic returns to the control node, online and current-game counters stay consistent across the whole pool.
+
+```bash
+cp .env.edge.example .env.edge
+./scripts/install-emulatorjs.sh 4.2.3
+docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
+```
+
+Replicate library payload from control to configured edges:
+
+```bash
+cp cluster/nodes.example cluster/nodes.conf
+./scripts/cluster-sync.sh --dry-run
+./scripts/cluster-sync.sh
+```
+
+See **[docs/en/SCALING.md](docs/en/SCALING.md)** for LB/CDN examples, inventory format, canary rollout and security guidance.
+
+## Updating
+
+Control/standalone:
+
+```bash
+./scripts/update.sh --mode standalone
+```
+
+One edge:
+
+```bash
+./scripts/update.sh --mode edge
+```
+
+All configured edges:
+
+```bash
+./scripts/cluster-update.sh --dry-run
+./scripts/cluster-update.sh
+```
+
+The updater uses ff-only Git changes, container rebuild/recreate, a local health check, and an automatic attempt to restore the previous commit/containers when a new deployment fails to become healthy.
+
+See **[docs/en/UPDATE.md](docs/en/UPDATE.md)** for the full workflow and Compose-only commands.
 
 ## Safe removal and migration
 
-Preview the exact removal plan first:
-
 ```bash
 sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
-```
-
-A normal removal detaches only installer-managed Nginx configuration and stops only the current Compose project while preserving the library, certificates, and system packages:
-
-```bash
 sudo ./scripts/uninstall.sh --domain arcade.example.com
 ```
 
@@ -118,7 +173,12 @@ sudo ./scripts/uninstall.sh \
   --backup-dir /root/retro-portal-backups
 ```
 
-The uninstaller never runs global Docker prune commands, does not uninstall Docker/Nginx/Certbot, and never rewrites arbitrary shared `stream`/SNI configuration.
+Edge-only removal is scoped to the edge Compose project:
+
+```bash
+./scripts/uninstall-edge.sh --dry-run
+./scripts/uninstall-edge.sh
+```
 
 See **[docs/en/UNINSTALL.md](docs/en/UNINSTALL.md)**.
 
@@ -131,10 +191,9 @@ Player browser
   ├─ ROM / BIOS for the selected game
   └─ WebSocket presence
           ↓
-      Reverse proxy
+      reverse proxy / CDN / edge
           ↓
-      Retro Portal
-      ├─ web
+      Retro Portal control
       ├─ API
       ├─ catalog
       ├─ statistics
@@ -146,8 +205,6 @@ After ROM/runtime delivery, emulation runs on the player's device. The server ha
 Endpoints, caching, and reverse-proxy notes: **[docs/en/NETWORKING.md](docs/en/NETWORKING.md)**.
 
 ## Controls
-
-Default desktop mapping:
 
 ```text
 Arrow keys   movement
@@ -162,7 +219,7 @@ Bindings can be changed on the game page and saved for one title or the entire p
 
 ## Activity
 
-A self-hosted instance tracks active browser sessions through WebSocket presence and stores launch events for the weekly popularity list. Tabs from the same browser share one local session ID, keeping the online count closer to visitors than raw open-tab count.
+A self-hosted instance tracks active browser sessions through WebSocket presence and stores launch events for the weekly popularity list. In scale-out mode every edge forwards presence to the control/origin node, so activity remains global across the pool.
 
 ## Security
 
@@ -174,16 +231,21 @@ Retro Portal uses layered hardening:
 - ZIP browser upload disabled by default;
 - metadata fetching restricted to trusted sources;
 - non-root backend with read-only root filesystem, `no-new-privileges`, and dropped Linux capabilities;
+- edge container runs unprivileged/read-only with all Linux capabilities dropped and no admin token;
+- edge → origin over the Internet is designed for HTTPS with certificate verification enabled;
+- cluster inventory stays out of Git; sync/update use SSH host-key verification;
 - Nginx CSP, anti-clickjacking, security headers, and API rate limits;
-- CI syntax/config checks, `npm audit`, and CodeQL.
+- CI validates both standalone and edge deployments, while security workflows run `npm audit` and CodeQL.
 
-See **[SECURITY.md](SECURITY.md)** for the complete threat model and internet-facing deployment guidance.
+See **[SECURITY.md](SECURITY.md)**.
 
 ## Documentation
 
 | Topic | Document |
 |---|---|
 | Installation | [docs/en/INSTALL.md](docs/en/INSTALL.md) |
+| Scaling | [docs/en/SCALING.md](docs/en/SCALING.md) |
+| Updating | [docs/en/UPDATE.md](docs/en/UPDATE.md) |
 | Removal / migration | [docs/en/UNINSTALL.md](docs/en/UNINSTALL.md) |
 | Library Manager | [docs/en/LIBRARY.md](docs/en/LIBRARY.md) |
 | Nginx / TLS | [docs/en/NGINX.md](docs/en/NGINX.md) |
