@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.1 — Safe removal & migration
+
+- replaced the old minimal uninstaller with a conservative removal workflow designed for hosts running other services;
+- added `--dry-run`, `--move`, verified backup, data purge, runtime cleanup and optional backend-image cleanup modes;
+- Nginx removal now touches only vhosts explicitly marked as managed by the Retro Portal installer;
+- installer-managed Nginx vhosts are backed up before removal, validated with `nginx -t`, and restored automatically if validation or reload fails;
+- manual/shared Nginx and `stream`/SNI map configuration is never rewritten automatically;
+- the uninstaller never runs global Docker prune commands and never removes Docker, Nginx, Certbot or TLS certificates;
+- migration backups are tar-verified, receive SHA-256 checksum files and are stored with restrictive permissions;
+- added complete RU/EN uninstall and migration guides and linked them from the main documentation;
+- bumped project version to `0.8.1`.
+
 ## 0.8.0 — Controls, Activity & Security
 
 - added a Retro Portal keyboard configuration layer using EmulatorJS `EJS_defaultControls` and per-platform control schemes;
