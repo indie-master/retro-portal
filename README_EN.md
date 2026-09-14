@@ -6,6 +6,7 @@
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 OPEN LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README.md">Русский</a>
   &nbsp;·&nbsp; <a href="docs/en/INSTALL.md">Install</a>
+  &nbsp;·&nbsp; <a href="docs/en/UNINSTALL.md">Remove / migrate</a>
   &nbsp;·&nbsp; <a href="docs/en/LIBRARY.md">Library Manager</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
 </p>
@@ -15,7 +16,7 @@
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.0-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.1-71cde2"></a>
 </p>
 
 ![Retro Portal home](docs/images/home.png)
@@ -38,7 +39,8 @@ The project is built for everyday use: library shelves, search, filters, saves, 
 - online presence, “playing now”, and 7-day popularity;
 - Library Manager for ROMs, BIOS files, cards, and publishing;
 - optional metadata proposals from TheGamesDB/Wikipedia with owner approval;
-- Docker Compose, Nginx, and multiple installation modes.
+- Docker Compose, Nginx, and multiple installation modes;
+- conservative uninstall/migration workflow that avoids global Docker or Nginx cleanup.
 
 ## Live Demo
 
@@ -92,6 +94,33 @@ curl -i http://127.0.0.1:8088/healthz
 A common production layout keeps the app on `127.0.0.1:8088` and terminates HTTPS in host Nginx/Caddy/Traefik.
 
 Full setup guide: **[docs/en/INSTALL.md](docs/en/INSTALL.md)**.
+
+## Safe removal and migration
+
+Preview the exact removal plan first:
+
+```bash
+sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
+```
+
+A normal removal detaches only installer-managed Nginx configuration and stops only the current Compose project while preserving the library, certificates, and system packages:
+
+```bash
+sudo ./scripts/uninstall.sh --domain arcade.example.com
+```
+
+Migration mode creates and verifies a backup before local library/runtime cleanup:
+
+```bash
+sudo ./scripts/uninstall.sh \
+  --domain arcade.example.com \
+  --move \
+  --backup-dir /root/retro-portal-backups
+```
+
+The uninstaller never runs global Docker prune commands, does not uninstall Docker/Nginx/Certbot, and never rewrites arbitrary shared `stream`/SNI configuration.
+
+See **[docs/en/UNINSTALL.md](docs/en/UNINSTALL.md)**.
 
 ## Architecture
 
@@ -155,6 +184,7 @@ See **[SECURITY.md](SECURITY.md)** for the complete threat model and internet-fa
 | Topic | Document |
 |---|---|
 | Installation | [docs/en/INSTALL.md](docs/en/INSTALL.md) |
+| Removal / migration | [docs/en/UNINSTALL.md](docs/en/UNINSTALL.md) |
 | Library Manager | [docs/en/LIBRARY.md](docs/en/LIBRARY.md) |
 | Nginx / TLS | [docs/en/NGINX.md](docs/en/NGINX.md) |
 | Networking / reverse proxy | [docs/en/NETWORKING.md](docs/en/NETWORKING.md) |
