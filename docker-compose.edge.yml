@@ -1,0 +1,36 @@
+name: retro-portal-edge
+
+services:
+  edge:
+    build:
+      context: .
+      dockerfile: edge/Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: "${EDGE_MEMORY_LIMIT:-384m}"
+    cpus: "${EDGE_CPU_LIMIT:-1.0}"
+    tmpfs:
+      - /var/cache/nginx:size=128m,mode=0755
+      - /var/run:size=8m,mode=0755
+      - /tmp:size=32m,mode=1777
+    environment:
+      CONTROL_ORIGIN_SCHEME: "${CONTROL_ORIGIN_SCHEME:-https}"
+      CONTROL_ORIGIN_HOST: "${CONTROL_ORIGIN_HOST:?set CONTROL_ORIGIN_HOST in .env.edge}"
+      CONTROL_ORIGIN_PORT: "${CONTROL_ORIGIN_PORT:-443}"
+    ports:
+      - "${EDGE_BIND_ADDR:-127.0.0.1}:${EDGE_PORT:-8088}:8080"
+    volumes:
+      - ./public:/usr/share/nginx/html:ro
+      - ./games/roms:/srv/roms:ro
+      - ./games/bios:/srv/bios:ro
+      - ./emulatorjs:/srv/emulatorjs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz >/dev/null 2>&1"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
