@@ -7,6 +7,7 @@
   &nbsp;·&nbsp; <a href="README_EN.md">English</a>
   &nbsp;·&nbsp; <a href="docs/ru/INSTALL.md">Установка</a>
   &nbsp;·&nbsp; <a href="docs/ru/LIBRARY.md">Library Manager</a>
+  &nbsp;·&nbsp; <a href="docs/ru/NETWORKING.md">Сетевое поведение</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Безопасность</a>
 </p>
 
@@ -53,7 +54,8 @@ Retro Portal превращает Ubuntu VPS, мини‑ПК или домаш�
 - ZIP upload выключен по умолчанию;
 - metadata fetch разрешён только с фиксированных доверенных источников;
 - контейнер backend работает non-root, read-only, без Linux capabilities и с `no-new-privileges`;
-- CSP, anti-clickjacking, rate limits и дополнительные HTTP security headers.
+- CSP, anti-clickjacking, rate limits и дополнительные HTTP security headers;
+- отдельный provider-friendly документ с **реальным** сетевым профилем приложения: [docs/ru/NETWORKING.md](docs/ru/NETWORKING.md).
 
 ## Online и популярность
 
@@ -101,6 +103,8 @@ https://ваш-домен/admin.html
 
 После установки для повседневного управления консоль не нужна.
 
+![Library Manager / админ-панель](docs/images/admin.png)
+
 Подробно: **[docs/ru/LIBRARY.md](docs/ru/LIBRARY.md)**.
 
 ## Автоматические описания и история
@@ -137,9 +141,11 @@ ROM загружает **только администратор**. Пользо
 - metadata/cover download не принимает произвольные URL;
 - admin auth имеет защиту от перебора.
 
-Это существенно уменьшает поверхность атаки, но ни один веб‑сервис нельзя честно назвать «невзламываемым». Полный threat model и рекомендации: **[SECURITY.md](SECURITY.md)**. Практики file upload сверены с рекомендациями OWASP.
+Dependency audit (`npm audit --audit-level=high`) и CodeQL запускаются на push/PR и по расписанию. Dependabot следит за npm, Docker и GitHub Actions. Это существенно уменьшает поверхность атаки, но ни один веб‑сервис нельзя честно назвать «невзламываемым». Полный threat model и рекомендации: **[SECURITY.md](SECURITY.md)**.
 
-## Быстрый старт
+## Установка
+
+### Вариант 1 — интерактивно
 
 ```bash
 sudo apt update
@@ -158,7 +164,29 @@ sudo ./scripts/install.sh
 4) Локальный тест без домена и TLS
 ```
 
-Подробно: [docs/ru/INSTALL.md](docs/ru/INSTALL.md).
+### Вариант 2 — Docker Compose
+
+Если Docker Engine/Compose и reverse proxy уже настроены:
+
+```bash
+git clone https://github.com/indie-master/retro-portal.git
+cd retro-portal
+cp .env.example .env
+./scripts/install-emulatorjs.sh 4.2.3
+docker compose build --pull
+docker compose up -d
+curl -i http://127.0.0.1:8088/healthz
+```
+
+По умолчанию приложение следует держать на `127.0.0.1:8088` и публиковать через host Nginx/Caddy/Traefik.
+
+Подробные режимы, TLS и обновление: [docs/ru/INSTALL.md](docs/ru/INSTALL.md).
+
+## Реальный сетевой профиль
+
+Retro Portal имеет настоящий долгоживущий WebSocket `/ws/presence` для online/current-game presence, обычные HTTPS API, HTTPS-раздачу ROM/BIOS и EmulatorJS JS/WASM assets. Эмуляция после загрузки выполняется на устройстве игрока.
+
+Текущая версия браузерного портала **не генерирует Xray XHTTP, произвольные raw TCP-соединения или native gRPC**. Полное описание, которое можно приложить к обращению в поддержку провайдера/CDN: **[docs/ru/NETWORKING.md](docs/ru/NETWORKING.md)**.
 
 ## Конфигурация безопасности
 
