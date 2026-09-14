@@ -56,6 +56,9 @@ jobs:
           test -s .env.edge.example
           test -s cluster/nodes.example
           test -s SECURITY.md
+          grep -q 'data-cover-upload' public/admin.js
+          grep -q '/api/admin/upload/cover/' backend/server.js
+          grep -q 'real_ip_header X-Real-IP' nginx.conf
           grep -q '^catalog/admin-token$' .gitignore
           grep -q '^catalog/runtime-games.json$' .gitignore
           grep -q '^catalog/stats.json$' .gitignore
@@ -107,7 +110,7 @@ jobs:
           MAX_UPLOAD_BYTES=2147483648
           EOF
           docker compose up -d --build
-          trap 'docker compose logs --tail=160 || true; docker compose down -v || true' EXIT
+          trap 'docker compose logs --tail=200 || true; docker compose down -v || true' EXIT
           for i in $(seq 1 50); do
             curl -fsS http://127.0.0.1:18088/healthz >/dev/null && break
             sleep 1
@@ -121,18 +124,53 @@ jobs:
           curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18088/api/admin/status > /tmp/admin-status.json
           curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18088/api/admin/games > /tmp/admin-games.json
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18088/api/admin/status)" = "401"
+
+          printf 'CI Mega Drive ROM fixture\n' > /tmp/ci-test.gen
+          curl -fsS \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'X-File-Name: ci-test.gen' \
+            -H 'X-System: megadrive' \
+            --data-binary @/tmp/ci-test.gen \
+            http://127.0.0.1:18088/api/admin/upload/rom > /tmp/rom-upload.json
+          STORED_ROM="$(jq -r '.storedName' /tmp/rom-upload.json)"
+          ROM_URL="$(jq -r '.game.romUrl' /tmp/rom-upload.json)"
+          GAME_ID="$(jq -r '.game.id' /tmp/rom-upload.json)"
+          test -n "$STORED_ROM" -a "$STORED_ROM" != null
+          test "$(stat -c '%a' "games/roms/megadrive/$STORED_ROM")" = "644"
+          curl -fsS "http://127.0.0.1:18088$ROM_URL" >/dev/null
+
+          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=' | base64 -d > /tmp/cover.png
+          curl -fsS \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'X-File-Name: cover.png' \
+            --data-binary @/tmp/cover.png \
+            "http://127.0.0.1:18088/api/admin/upload/cover/$GAME_ID" > /tmp/cover-upload.json
+          COVER_URL="$(jq -r '.cover' /tmp/cover-upload.json)"
+          COVER_FILE="$(basename "$COVER_URL")"
+          test "$(stat -c '%a' "public/covers/library/$COVER_FILE")" = "644"
+          curl -fsS "http://127.0.0.1:18088$COVER_URL" >/dev/null
+
+          curl -fsS -H 'X-Real-IP: 203.0.113.77' http://127.0.0.1:18088/api/status >/dev/null
+          sleep 1
+          docker compose logs web | grep -q '203.0.113.77'
+
           python3 - <<'PY'
           import json
           public=json.load(open('/tmp/public-games.json'))['games']
           admin=json.load(open('/tmp/admin-games.json'))['games']
           status=json.load(open('/tmp/admin-status.json'))
           activity=json.load(open('/tmp/activity.json'))
+          rom=json.load(open('/tmp/rom-upload.json'))
+          cover=json.load(open('/tmp/cover-upload.json'))
           assert all(g.get('playable') for g in public), 'public API exposed a non-playable title'
           assert len(admin) >= len(public), 'admin catalog should be at least as large as public catalog'
           assert status.get('ok') is True
           assert 'systems' in status and 'summary' in status and 'security' in status
           assert activity.get('real') is True
           assert isinstance(activity.get('popular7d'), list)
+          assert rom['game']['playable'] is True
+          assert cover['game']['cover'] == cover['cover']
+          assert cover['cover'].startswith('/covers/library/')
           PY
       - name: README local links and required assets
         run: |
