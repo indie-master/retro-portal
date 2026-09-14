@@ -21,7 +21,7 @@ Usage:
 
 Quick-installer options:
   --install-dir DIR   Installation directory (default: /opt/retro-portal)
-  --branch NAME       Git branch/tag to deploy (default: main)
+  --branch NAME       Git branch to deploy (default: main)
   --quick-help        Show this help
 
 All other arguments are forwarded unchanged to scripts/install.sh.
@@ -61,7 +61,7 @@ case "$INSTALL_DIR" in
     exit 1
     ;;
 esac
-[[ "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo 'ERROR: invalid branch/tag name.' >&2; exit 1; }
+[[ "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo 'ERROR: invalid branch name.' >&2; exit 1; }
 
 ensure_bootstrap_tools() {
   if command -v git >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
@@ -102,7 +102,7 @@ safe_existing_checkout() {
 }
 
 prepare_mutable_dirs() {
-  local dir
+  local dir file
   for dir in \
     "$INSTALL_DIR/catalog" \
     "$INSTALL_DIR/games/roms" \
@@ -110,9 +110,21 @@ prepare_mutable_dirs() {
     "$INSTALL_DIR/public/covers/library" \
     "$INSTALL_DIR/public/screenshots/library"; do
     mkdir -p "$dir"
-    chown -R 1000:1000 "$dir"
-    find "$dir" -type d -exec chmod 0755 {} +
+    chown 1000:1000 "$dir"
+    chmod 0755 "$dir"
   done
+
+  for file in \
+    "$INSTALL_DIR/catalog/admin-token" \
+    "$INSTALL_DIR/catalog/runtime-games.json" \
+    "$INSTALL_DIR/catalog/stats.json" \
+    "$INSTALL_DIR/catalog/activity.json" \
+    "$INSTALL_DIR/catalog/metadata-proposals.json"; do
+    [[ -e "$file" ]] && chown 1000:1000 "$file"
+  done
+
+  # Artwork is small and may be refreshed by metadata jobs, so normalize existing ownership there.
+  chown -R 1000:1000 "$INSTALL_DIR/public/covers/library" "$INSTALL_DIR/public/screenshots/library"
 }
 
 ensure_bootstrap_tools
@@ -135,7 +147,6 @@ else
   git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$INSTALL_DIR"
 fi
 
-chown -R root:root "$INSTALL_DIR"
 prepare_mutable_dirs
 chmod 0755 "$INSTALL_DIR" "$INSTALL_DIR/scripts" "$INSTALL_DIR/scripts/install.sh"
 
