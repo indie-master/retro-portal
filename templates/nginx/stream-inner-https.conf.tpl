@@ -5,6 +5,10 @@ server {
     listen 127.0.0.1:{{INNER_TLS_PORT}} ssl{{PROXY_PROTOCOL_SUFFIX}}; server_name {{DOMAIN}};
     ssl_certificate {{CERT_PATH}}; ssl_certificate_key {{KEY_PATH}}; ssl_session_cache shared:RETROPORTAL:10m; ssl_session_timeout 1d; ssl_protocols TLSv1.2 TLSv1.3;
 {{REAL_IP_BLOCK}}
-    location /ws/ { proxy_pass http://127.0.0.1:{{APP_PORT}}; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto https; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_read_timeout 3600s; proxy_send_timeout 3600s; proxy_buffering off; }
-    location / { proxy_pass http://127.0.0.1:{{APP_PORT}}; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto https; }
+    # When stream passes PROXY protocol, use its source address explicitly. This
+    # avoids losing the original client IP when the request crosses host->Docker.
+    set $retro_client_ip $remote_addr;
+    if ($proxy_protocol_addr != "") { set $retro_client_ip $proxy_protocol_addr; }
+    location /ws/ { proxy_pass http://127.0.0.1:{{APP_PORT}}; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $retro_client_ip; proxy_set_header X-Forwarded-For $retro_client_ip; proxy_set_header X-Forwarded-Proto https; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_read_timeout 3600s; proxy_send_timeout 3600s; proxy_buffering off; }
+    location / { proxy_pass http://127.0.0.1:{{APP_PORT}}; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $retro_client_ip; proxy_set_header X-Forwarded-For $retro_client_ip; proxy_set_header X-Forwarded-Proto https; }
 }
