@@ -37,6 +37,8 @@ jobs:
           test -s public/styles-activity.css
           test -s docs/ru/LIBRARY.md
           test -s docs/en/LIBRARY.md
+          test -s docs/ru/NETWORKING.md
+          test -s docs/en/NETWORKING.md
           test -s SECURITY.md
           grep -q 'catalog/admin-token' .gitignore
       - name: Docker Compose
@@ -96,6 +98,7 @@ jobs:
         run: |
           test -s docs/images/home.png
           test -s docs/images/local-rom.png
+          test -s docs/images/admin.png
           python3 - <<'PY'
           import pathlib,re,sys
           roots=[pathlib.Path('README.md'),pathlib.Path('README_EN.md')]
