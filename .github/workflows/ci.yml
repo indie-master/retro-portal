@@ -41,6 +41,10 @@ jobs:
           test -s docs/en/NETWORKING.md
           test -s SECURITY.md
           grep -q 'catalog/admin-token' .gitignore
+      - name: Public demo copy
+        run: |
+          grep -q 'renderDemoActivity' pages/app.js
+          ! grep -RqiE 'без backend|не рисуем фальшив|фальшивый онлайн|Xray XHTTP|provider-facing|provider/CDN support' README.md README_EN.md CHANGELOG.md docs pages public
       - name: Docker Compose
         run: docker compose config >/dev/null
       - name: Nginx syntax
