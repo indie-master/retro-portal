@@ -1,13 +1,12 @@
 # Retro Portal
 
-<p align="center"><strong>Ламповая self-hosted библиотека ретро-игр: владелец собирает коллекцию, игроки просто нажимают «Играть».</strong></p>
+<p align="center"><strong>Self-hosted библиотека ретро-игр с запуском прямо в браузере.</strong></p>
 
 <p align="center">
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 ОТКРЫТЬ LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README_EN.md">English</a>
   &nbsp;·&nbsp; <a href="docs/ru/INSTALL.md">Установка</a>
   &nbsp;·&nbsp; <a href="docs/ru/LIBRARY.md">Library Manager</a>
-  &nbsp;·&nbsp; <a href="docs/ru/NETWORKING.md">Сетевое поведение</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Безопасность</a>
 </p>
 
@@ -17,135 +16,54 @@
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
   <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.0-71cde2"></a>
-  <a href="SECURITY.md"><img alt="Security" src="https://img.shields.io/badge/security-hardened-7ddc78"></a>
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
 
 ## Что это
 
-Retro Portal превращает Ubuntu VPS, мини‑ПК или домашний сервер в личную браузерную библиотеку ретро‑игр.
+Retro Portal превращает VPS, мини‑ПК или домашний сервер в аккуратную браузерную библиотеку ретро‑игр. Игрок открывает сайт, выбирает игру и нажимает **Играть** — эмуляция запускается на его устройстве в браузере.
 
-```text
-Игрок
-  ↓
-/                     → только готовые к запуску игры
-/game.html?id=...      → игра + удобная раскладка клавиатуры
-/local.html            → свой ROM остаётся в браузере
+Проект рассчитан на нормальную повседневную эксплуатацию: библиотека, поиск, фильтры, сохранения, клавиатура и геймпад, текущая активность, статистика запусков и отдельная админ‑панель для владельца.
 
-Владелец
-  ↓
-/admin.html             → ROM, BIOS, карточки, описания, публикация
-```
+## Возможности
 
-Публичный игрок **никогда не видит** сообщений «нужен BIOS», путей к файлам или серверной кухни. Игра появляется на главной только когда ROM, обязательный BIOS и runtime готовы.
+- запуск игр прямо в браузере через EmulatorJS;
+- Mega Drive, PlayStation, NES, SNES, Game Boy, GBA, Nintendo 64 и Arcade;
+- экспериментальная поддержка Dreamcast;
+- поиск, платформенные полки, избранное и фильтр игр на двоих;
+- собственная раскладка клавиатуры для одной игры или всей платформы;
+- поддержка геймпада;
+- локальный запуск собственного ROM без отправки файла на сервер;
+- online presence, блок «Во что играют сейчас» и популярность за 7 дней;
+- Library Manager для ROM, BIOS, карточек игр и публикации;
+- автоматические предложения метаданных из TheGamesDB/Wikipedia с подтверждением владельцем;
+- Docker Compose, Nginx и несколько сценариев установки.
 
-## Что нового в 0.8.0
+## Live Demo
 
-- собственный слой настройки клавиатуры поверх EmulatorJS;
-- профили управления для Mega Drive, PlayStation, NES/SNES, GB/GBA, N64 и Arcade;
-- раскладка сохраняется для одной игры или сразу для всей платформы;
-- настоящий online-presence по уникальным браузерным сессиям, а не по количеству вкладок;
-- «Во что играют сейчас» и «Популярно за 7 дней» строятся по **реальным** запускам;
-- автоматический подбор сюжета/описания и короткой истории игры;
-- новые метаданные сначала попадают в очередь владельцу: **Принять / Отклонить**;
-- редактирование карточек, публикации и featured‑статуса прямо из `/admin.html`;
-- загрузки ROM/BIOS усилены allowlist‑проверками, лимитами и безопасными именами;
-- ZIP upload выключен по умолчанию;
-- metadata fetch разрешён только с фиксированных доверенных источников;
-- контейнер backend работает non-root, read-only, без Linux capabilities и с `no-new-privileges`;
-- CSP, anti-clickjacking, rate limits и дополнительные HTTP security headers;
-- отдельный provider-friendly документ с **реальным** сетевым профилем приложения: [docs/ru/NETWORKING.md](docs/ru/NETWORKING.md).
+**https://indie-master.github.io/retro-portal/**
 
-## Online и популярность
+Публичная сборка содержит только свободно распространяемые demo/homebrew ROM. Блок активности заполнен демонстрационными данными, чтобы можно было увидеть весь интерфейс в рабочем виде. В self-hosted установке те же блоки получают данные от встроенного backend.
 
-Счётчик на self-hosted портале настоящий. Браузер получает случайный локальный session ID, поэтому несколько вкладок одного браузера не раздувают online.
+## Интерфейс владельца
 
-Retro Portal **не подделывает** востребованность. Если сейчас никто не играет, интерфейс честно показывает тишину. После реальных запусков появляется рейтинг за 7 дней. GitHub Pages demo явно помечает отсутствие backend-статистики как demo-режим.
+Library Manager доступен по `/admin.html` и позволяет управлять коллекцией без постоянной работы через консоль:
 
-## Управление с клавиатуры
-
-EmulatorJS официально поддерживает собственные default controls через `EJS_defaultControls`; Retro Portal добавляет поверх этого удобный интерфейс. Нажмите **⌨ Клавиши** на странице игры, кликните по действию и нажмите желаемую клавишу.
-
-По умолчанию:
-
-```text
-Стрелки     движение
-Z / X       основные действия
-A / S / D   дополнительные кнопки
-Q / W       плечевые кнопки
-Enter       Start
-Shift       Select / Mode
-```
-
-Настройки хранятся локально в браузере и могут быть сохранены для конкретной игры либо платформы.
-
-Официальная документация EmulatorJS: https://emulatorjs.org/docs4devs/control-mapping/
-
-## Library Manager
-
-Откройте:
-
-```text
-https://ваш-домен/admin.html
-```
-
-Из кабинета можно:
-
-- загрузить ROM;
-- загрузить и проверить BIOS;
-- просканировать большую библиотеку после SCP/SFTP;
-- увидеть, чего не хватает конкретной игре;
-- отредактировать название, описание, историю, количество игроков и сортировку;
-- сделать игру избранной или скрыть её;
-- запросить автоматические метаданные;
-- принять или отклонить предложенное описание/историю/обложку.
-
-После установки для повседневного управления консоль не нужна.
+- загрузка ROM и BIOS;
+- сканирование библиотеки после SCP/SFTP;
+- проверка готовности игры к запуску;
+- редактирование названия, описания, истории и порядка сортировки;
+- featured/visibility;
+- получение и подтверждение метаданных.
 
 ![Library Manager / админ-панель](docs/images/admin.png)
 
 Подробно: **[docs/ru/LIBRARY.md](docs/ru/LIBRARY.md)**.
 
-## Автоматические описания и история
+## Быстрый старт
 
-Логика специально разделена на **поиск** и **публикацию**.
-
-1. Retro Portal распознаёт игру по ROM/preset.
-2. Если задан `THEGAMESDB_API_KEY`, backend предлагает название, год, игроков, overview и box-art из TheGamesDB.
-3. Отдельно можно получить короткий исторический контекст через публичный Wikipedia API.
-4. Текст очищается и ограничивается по длине.
-5. Ничего из найденного не публикуется автоматически — карточка получает `pendingMetadata`.
-6. Владелец нажимает **Принять** или **Отклонить**.
-
-```ini
-THEGAMESDB_API_KEY=your-key
-WIKIPEDIA_METADATA=1
-```
-
-## Безопасность ROM upload
-
-ROM загружает **только администратор**. Пользовательская кнопка «Свой ROM» работает локально через browser Object URL и не отправляет файл на сервер.
-
-Защита server-side upload включает:
-
-- allowlist расширений для каждой платформы;
-- лимит размера;
-- безопасное серверное имя на основе SHA-256;
-- проверку сигнатур для форматов, где она надёжно определима;
-- запрет browser-upload многофайловых CUE/GDI — для них используется SCP/SFTP + scan;
-- ZIP по умолчанию отключён;
-- BIOS PS1 может распознаваться по известному MD5;
-- ROM никогда не запускается как программа на backend;
-- контейнер backend не имеет Linux capabilities;
-- metadata/cover download не принимает произвольные URL;
-- admin auth имеет защиту от перебора.
-
-Dependency audit (`npm audit --audit-level=high`) и CodeQL запускаются на push/PR и по расписанию. Dependabot следит за npm, Docker и GitHub Actions. Это существенно уменьшает поверхность атаки, но ни один веб‑сервис нельзя честно назвать «невзламываемым». Полный threat model и рекомендации: **[SECURITY.md](SECURITY.md)**.
-
-## Установка
-
-### Вариант 1 — интерактивно
+### Вариант 1 — интерактивная установка
 
 ```bash
 sudo apt update
@@ -155,14 +73,7 @@ cd retro-portal
 sudo ./scripts/install.sh
 ```
 
-Установщик предлагает:
-
-```text
-1) Полная автоматическая установка
-2) Интеграция в существующий Nginx
-3) Ручная интеграция — приложение + snippets
-4) Локальный тест без домена и TLS
-```
+Установщик поддерживает автоматическую установку, интеграцию в существующий Nginx, ручной режим и локальный тест.
 
 ### Вариант 2 — Docker Compose
 
@@ -178,57 +89,92 @@ docker compose up -d
 curl -i http://127.0.0.1:8088/healthz
 ```
 
-По умолчанию приложение следует держать на `127.0.0.1:8088` и публиковать через host Nginx/Caddy/Traefik.
+По умолчанию приложение удобно держать на `127.0.0.1:8088`, а HTTPS завершать на host Nginx/Caddy/Traefik.
 
-Подробные режимы, TLS и обновление: [docs/ru/INSTALL.md](docs/ru/INSTALL.md).
+Полная инструкция: **[docs/ru/INSTALL.md](docs/ru/INSTALL.md)**.
 
-## Реальный сетевой профиль
+## Как устроено
 
-Retro Portal имеет настоящий долгоживущий WebSocket `/ws/presence` для online/current-game presence, обычные HTTPS API, HTTPS-раздачу ROM/BIOS и EmulatorJS JS/WASM assets. Эмуляция после загрузки выполняется на устройстве игрока.
-
-Текущая версия браузерного портала **не генерирует Xray XHTTP, произвольные raw TCP-соединения или native gRPC**. Полное описание, которое можно приложить к обращению в поддержку провайдера/CDN: **[docs/ru/NETWORKING.md](docs/ru/NETWORKING.md)**.
-
-## Конфигурация безопасности
-
-```ini
-# Browser upload архивов выключен по умолчанию
-ALLOW_ZIP_ROMS=0
-
-# Короткая история из Wikipedia proposal
-WIKIPEDIA_METADATA=1
-
-# Максимальный upload, по умолчанию 2 GiB
-MAX_UPLOAD_BYTES=2147483648
+```text
+Браузер игрока
+  ├─ HTML / CSS / JS
+  ├─ EmulatorJS runtime / WASM
+  ├─ ROM / BIOS для выбранной игры
+  └─ WebSocket presence
+          ↓
+      Reverse proxy
+          ↓
+      Retro Portal
+      ├─ web
+      ├─ API
+      ├─ каталог
+      ├─ статистика
+      └─ Library Manager
 ```
 
-## Требования
+После загрузки ROM и runtime сама эмуляция идёт на устройстве игрока. Сервер отвечает за web‑интерфейс, файлы библиотеки, API, presence и административные функции.
 
-| Ресурс | Минимум | Рекомендуется |
-|---|---:|---:|
-| Ubuntu | 22.04 | 24.04 LTS |
-| CPU | 1 vCPU | 2 vCPU |
-| RAM | 1 GB | 2 GB |
-| Диск | 20 GB | 40+ GB NVMe |
-| Сеть | 100 Mbps | 1 Gbps |
-| GPU | не нужен | не нужен |
+Сетевые endpoint'ы, кеширование и reverse proxy: **[docs/ru/NETWORKING.md](docs/ru/NETWORKING.md)**.
 
-Эмуляция выполняется на устройстве игрока, поэтому GPU серверу не нужен.
+## Управление
+
+По умолчанию используется привычная desktop‑раскладка:
+
+```text
+Стрелки     движение
+Z / X       основные действия
+A / S / D   дополнительные кнопки
+Q / W       плечевые кнопки
+Enter       Start
+Shift       Select / Mode
+```
+
+Раскладку можно изменить прямо на странице игры и сохранить отдельно для конкретной игры или всей платформы.
+
+## Активность
+
+Self-hosted версия считает активные браузерные сессии через WebSocket и хранит историю запусков для недельного рейтинга. Несколько вкладок одного браузера используют общий локальный session ID, поэтому счётчик остаётся ближе к числу реальных посетителей, а не количеству открытых вкладок.
+
+## Безопасность
+
+Проект использует защиту в несколько слоёв:
+
+- admin API защищён `ADMIN_TOKEN` и throttling от перебора;
+- ROM/BIOS upload ограничен allowlist'ами форматов и размером;
+- небезопасные имена файлов не используются как server-side пути;
+- ZIP upload выключен по умолчанию;
+- metadata fetch ограничен доверенными источниками;
+- backend работает non-root, с read-only root filesystem, `no-new-privileges` и без Linux capabilities;
+- Nginx добавляет CSP, anti-clickjacking, security headers и rate limits;
+- CI запускает syntax/config checks, `npm audit` и CodeQL.
+
+Полный threat model и рекомендации по публикации в Интернет: **[SECURITY.md](SECURITY.md)**.
+
+## Документация
+
+| Раздел | Документ |
+|---|---|
+| Установка | [docs/ru/INSTALL.md](docs/ru/INSTALL.md) |
+| Library Manager | [docs/ru/LIBRARY.md](docs/ru/LIBRARY.md) |
+| Nginx / TLS | [docs/ru/NGINX.md](docs/ru/NGINX.md) |
+| Сеть и reverse proxy | [docs/ru/NETWORKING.md](docs/ru/NETWORKING.md) |
+| ROM / BIOS | [docs/ru/ROMS.md](docs/ru/ROMS.md) |
+| Dreamcast | [docs/ru/DREAMCAST.md](docs/ru/DREAMCAST.md) |
+| Диагностика | [docs/ru/TROUBLESHOOTING.md](docs/ru/TROUBLESHOOTING.md) |
+| Безопасность | [SECURITY.md](SECURITY.md) |
+| Сторонние компоненты | [THIRD_PARTY.md](THIRD_PARTY.md) |
 
 ## Компоненты
 
-- **EmulatorJS** — браузерные cores и эмуляция: https://emulatorjs.org/
-- **Docker Engine / Compose** — контейнеризация: https://docs.docker.com/engine/
-- **Nginx** — web/reverse proxy: https://nginx.org/
-- **TheGamesDB** — опциональные игровые метаданные: https://thegamesdb.net/
-- **MediaWiki API / Wikipedia** — опциональный исторический контекст: https://www.mediawiki.org/wiki/API:Main_page
+- [EmulatorJS](https://emulatorjs.org/) — браузерная эмуляция;
+- [Docker Engine / Compose](https://docs.docker.com/engine/) — контейнеризация;
+- [Nginx](https://nginx.org/) — web/reverse proxy;
+- [TheGamesDB](https://thegamesdb.net/) — опциональные игровые метаданные;
+- [MediaWiki API](https://www.mediawiki.org/wiki/API:Main_page) — опциональная история игр.
 
-Лицензии сторонних компонентов перечислены в [THIRD_PARTY.md](THIRD_PARTY.md).
+## ROM и BIOS
 
-## Live Demo
-
-**https://indie-master.github.io/retro-portal/**
-
-GitHub Pages содержит только легально распространяемые demo/homebrew ROM. Коммерческие ROM, BIOS и официальные artwork не входят в репозиторий.
+Коммерческие ROM, BIOS и официальные artwork не входят в репозиторий. Пользователь добавляет собственные файлы самостоятельно. В публичном demo используются только ROM, разрешённые к распространению.
 
 ## Лицензия
 
