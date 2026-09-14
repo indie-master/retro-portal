@@ -6,8 +6,9 @@
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 ОТКРЫТЬ LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README_EN.md">English</a>
   &nbsp;·&nbsp; <a href="docs/ru/INSTALL.md">Установка</a>
+  &nbsp;·&nbsp; <a href="docs/ru/SCALING.md">Масштабирование</a>
+  &nbsp;·&nbsp; <a href="docs/ru/UPDATE.md">Обновление</a>
   &nbsp;·&nbsp; <a href="docs/ru/UNINSTALL.md">Удаление / перенос</a>
-  &nbsp;·&nbsp; <a href="docs/ru/LIBRARY.md">Library Manager</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Безопасность</a>
 </p>
 
@@ -16,7 +17,7 @@
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.1-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.9.0-71cde2"></a>
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
@@ -25,7 +26,7 @@
 
 Retro Portal превращает VPS, мини‑ПК или домашний сервер в аккуратную браузерную библиотеку ретро‑игр. Игрок открывает сайт, выбирает игру и нажимает **Играть** — эмуляция запускается на его устройстве в браузере.
 
-Проект рассчитан на нормальную повседневную эксплуатацию: библиотека, поиск, фильтры, сохранения, клавиатура и геймпад, текущая активность, статистика запусков и отдельная админ‑панель для владельца.
+Проект можно держать на одной машине или масштабировать: один control/origin отвечает за библиотеку, admin/API и живую статистику, а несколько edge-нод или CDN распределяют раздачу ROM, EmulatorJS runtime, обложек и статических файлов.
 
 ## Возможности
 
@@ -40,6 +41,10 @@ Retro Portal превращает VPS, мини‑ПК или домашний �
 - Library Manager для ROM, BIOS, карточек игр и публикации;
 - автоматические предложения метаданных из TheGamesDB/Wikipedia с подтверждением владельцем;
 - Docker Compose, Nginx и несколько сценариев установки;
+- single-node режим без дополнительной инфраструктуры;
+- optional scale-out через control/origin + edge-ноды + CDN/LB;
+- синхронизация ROM/BIOS/artwork/runtime на edge через SSH/rsync без копирования секретов;
+- rolling update control/edge с health check и попыткой rollback;
 - безопасное штатное удаление/перенос без глобальной очистки Docker или Nginx.
 
 ## Live Demo
@@ -95,6 +100,70 @@ curl -i http://127.0.0.1:8088/healthz
 
 Полная инструкция: **[docs/ru/INSTALL.md](docs/ru/INSTALL.md)**.
 
+## Масштабирование
+
+Single-node остаётся режимом по умолчанию. Для более высокой нагрузки можно добавить stateless edge-ноды:
+
+```text
+                  CDN / Load Balancer
+                         │
+            ┌────────────┼────────────┐
+            │            │            │
+          EDGE-1       EDGE-2       EDGE-N
+       static/ROM    static/ROM    static/ROM
+            └────────────┬────────────┘
+                         │ API / WS
+                         ▼
+                  CONTROL / ORIGIN
+                 backend + admin + stats
+```
+
+Edge обслуживает тяжёлые/cacheable файлы локально и проксирует небольшой API/WebSocket трафик к control/origin. Admin API на edge отключён. Online/current-game статистика остаётся общей, потому что WebSocket централизован на control-ноде.
+
+Запуск edge:
+
+```bash
+cp .env.edge.example .env.edge
+# задайте CONTROL_ORIGIN_HOST
+./scripts/install-emulatorjs.sh 4.2.3
+docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
+```
+
+Синхронизация библиотеки с control на edge-пул:
+
+```bash
+cp cluster/nodes.example cluster/nodes.conf
+./scripts/cluster-sync.sh --dry-run
+./scripts/cluster-sync.sh
+```
+
+Подробная архитектура, LB/CDN и схема для нескольких серверов: **[docs/ru/SCALING.md](docs/ru/SCALING.md)**.
+
+## Обновление
+
+Обычная установка/control:
+
+```bash
+./scripts/update.sh --mode standalone
+```
+
+Одна edge-нода:
+
+```bash
+./scripts/update.sh --mode edge
+```
+
+Весь edge-пул:
+
+```bash
+./scripts/cluster-update.sh --dry-run
+./scripts/cluster-update.sh
+```
+
+Updater использует `git pull --ff-only`, rebuild/recreate контейнеров и локальный health check. Если новая версия не становится healthy, скрипт пытается вернуть предыдущий commit и контейнеры предыдущей версии.
+
+Полная инструкция и Docker Compose-only сценарий: **[docs/ru/UPDATE.md](docs/ru/UPDATE.md)**.
+
 ## Безопасное удаление и перенос
 
 Перед удалением можно увидеть точный план без изменений:
@@ -118,7 +187,12 @@ sudo ./scripts/uninstall.sh \
   --backup-dir /root/retro-portal-backups
 ```
 
-Migration mode сначала создаёт и проверяет архив + SHA-256, а уже потом очищает локальные данные/runtime. Скрипт не выполняет `docker system prune`, не удаляет Docker/Nginx/Certbot и не переписывает произвольные shared `stream`/SNI-конфиги.
+Для удаления только edge-копии:
+
+```bash
+./scripts/uninstall-edge.sh --dry-run
+./scripts/uninstall-edge.sh
+```
 
 Подробно: **[docs/ru/UNINSTALL.md](docs/ru/UNINSTALL.md)**.
 
@@ -131,10 +205,9 @@ Migration mode сначала создаёт и проверяет архив + 
   ├─ ROM / BIOS для выбранной игры
   └─ WebSocket presence
           ↓
-      Reverse proxy
+      Reverse proxy / CDN / edge
           ↓
-      Retro Portal
-      ├─ web
+      Retro Portal control
       ├─ API
       ├─ каталог
       ├─ статистика
@@ -162,7 +235,7 @@ Shift       Select / Mode
 
 ## Активность
 
-Self-hosted версия считает активные браузерные сессии через WebSocket и хранит историю запусков для недельного рейтинга. Несколько вкладок одного браузера используют общий локальный session ID, поэтому счётчик остаётся ближе к числу реальных посетителей, а не количеству открытых вкладок.
+Self-hosted версия считает активные браузерные сессии через WebSocket и хранит историю запусков для недельного рейтинга. В scale-out режиме все edge проксируют presence на один control/origin, поэтому счётчик и «Во что играют сейчас» остаются общими для всего пула.
 
 ## Безопасность
 
@@ -174,8 +247,11 @@ Self-hosted версия считает активные браузерные с
 - ZIP upload выключен по умолчанию;
 - metadata fetch ограничен доверенными источниками;
 - backend работает non-root, с read-only root filesystem, `no-new-privileges` и без Linux capabilities;
+- edge-контейнер работает unprivileged, read-only, без Linux capabilities и не содержит admin token;
+- edge → origin через Internet рассчитан на HTTPS с обязательной проверкой сертификата;
+- cluster inventory исключён из Git, а sync/update используют SSH host-key verification;
 - Nginx добавляет CSP, anti-clickjacking, security headers и rate limits;
-- CI запускает syntax/config checks, `npm audit` и CodeQL.
+- CI запускает syntax/config checks, standalone и edge runtime checks, `npm audit` и CodeQL.
 
 Полный threat model и рекомендации по публикации в Интернет: **[SECURITY.md](SECURITY.md)**.
 
@@ -184,6 +260,8 @@ Self-hosted версия считает активные браузерные с
 | Раздел | Документ |
 |---|---|
 | Установка | [docs/ru/INSTALL.md](docs/ru/INSTALL.md) |
+| Масштабирование | [docs/ru/SCALING.md](docs/ru/SCALING.md) |
+| Обновление | [docs/ru/UPDATE.md](docs/ru/UPDATE.md) |
 | Удаление / перенос | [docs/ru/UNINSTALL.md](docs/ru/UNINSTALL.md) |
 | Library Manager | [docs/ru/LIBRARY.md](docs/ru/LIBRARY.md) |
 | Nginx / TLS | [docs/ru/NGINX.md](docs/ru/NGINX.md) |

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.0 — Scale-out & Safe Updates
+
+- kept the original single-node deployment as the default while adding an optional control/origin + edge architecture;
+- added `docker-compose.edge.yml` and a hardened unprivileged read-only edge image for distributing ROM/runtime/artwork traffic;
+- edge nodes serve cacheable/static game payload locally and proxy API/WebSocket traffic to a single control/origin so presence/statistics remain consistent;
+- disabled `/admin.html` and `/api/admin/*` on edge nodes;
+- enabled verified HTTPS for edge → origin traffic and documented private-network/firewall recommendations;
+- added configurable CPU/RAM guardrails for edge containers;
+- added `cluster/nodes.example`, `scripts/cluster-sync.sh` and `scripts/cluster-update.sh` for SSH/rsync payload replication and rolling code updates;
+- cluster sync explicitly excludes `.env`, admin tokens, mutable catalog/state and credentials;
+- added `scripts/uninstall-edge.sh` for scoped edge removal without touching host Nginx or unrelated Docker resources;
+- replaced the minimal updater with `scripts/update.sh` supporting standalone/edge modes, `git pull --ff-only`, health checks and automatic previous-commit rollback attempts;
+- added RU/EN scaling and update guides plus expanded installation/networking/security documentation;
+- CI now validates the edge Compose file, boots the hardened edge container, checks local health/admin denial and inspects unprivileged/read-only/cap-drop settings;
+- bumped project version to `0.9.0`.
+
 ## 0.8.1 — Safe removal & migration
 
 - replaced the old minimal uninstaller with a conservative removal workflow designed for hosts running other services;

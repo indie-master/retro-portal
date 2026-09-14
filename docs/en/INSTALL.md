@@ -1,8 +1,10 @@
 # Installation
 
-[← README](../../README_EN.md) · [Library Manager](LIBRARY.md) · [Nginx/TLS](NGINX.md) · [Networking](NETWORKING.md) · [Troubleshooting](TROUBLESHOOTING.md)
+[← README](../../README_EN.md) · [Scaling](SCALING.md) · [Updating](UPDATE.md) · [Remove / migrate](UNINSTALL.md) · [Library Manager](LIBRARY.md) · [Nginx/TLS](NGINX.md) · [Networking](NETWORKING.md)
 
 Recommended baseline: Ubuntu 24.04 LTS, 2 vCPU, 2 GB RAM, 40 GB NVMe and 100 Mbps+ network.
+
+A normal deployment needs only one server. Optional edge nodes can be added later without redesigning the original single-node installation.
 
 ## Option A — interactive installer
 
@@ -14,7 +16,7 @@ cd retro-portal
 sudo ./scripts/install.sh
 ```
 
-The installer offers four modes: **Full**, **Existing Nginx**, **Manual integration**, and **Local test**.
+Installer modes:
 
 ```bash
 sudo ./scripts/install.sh --mode full --domain arcade.example.com
@@ -23,11 +25,9 @@ sudo ./scripts/install.sh --mode existing --domain arcade.example.com
 ./scripts/install.sh --mode local
 ```
 
-Existing-Nginx mode inspects the current configuration before changing anything and always runs `nginx -t` before reload.
+Existing-Nginx mode inspects the current topology first and always runs `nginx -t` before reload. On hosts that already run other applications, `existing` or `manual` is usually the safest choice.
 
 ## Option B — Docker Compose only
-
-Use this when Docker Engine + Compose are already installed and you want to manage reverse proxy/TLS yourself.
 
 ```bash
 git clone https://github.com/indie-master/retro-portal.git
@@ -42,7 +42,7 @@ Optional demo ROMs:
 ./scripts/install-homebrew-roms.sh
 ```
 
-Review `.env`:
+Typical `.env`:
 
 ```ini
 PORT=8088
@@ -56,12 +56,12 @@ ALLOW_ZIP_ROMS=0
 MAX_UPLOAD_BYTES=2147483648
 ```
 
-Start the stack:
+Start:
 
 ```bash
-docker compose pull
+docker compose pull --ignore-buildable
 docker compose build --pull
-docker compose up -d
+docker compose up -d --remove-orphans
 ```
 
 Verify:
@@ -72,21 +72,49 @@ curl -i http://127.0.0.1:8088/healthz
 curl -s http://127.0.0.1:8088/api/games | jq
 ```
 
-Then proxy your host Nginx/Caddy/Traefik to `127.0.0.1:8088`. Avoid publishing the internal port to the Internet unless you explicitly need that topology.
+Then proxy host Nginx/Caddy/Traefik to `127.0.0.1:8088`.
 
 ## Option C — existing Nginx, no automatic edits
-
-Run the Compose stack and generate snippets only:
 
 ```bash
 ./scripts/install.sh --mode manual --domain arcade.example.com
 ```
 
-The installer writes snippets into `generated/` without touching the live Nginx config. This is appropriate for complex installations using `stream`, `ssl_preread`, PROXY protocol, or custom certificate handling.
+This generates snippets under `generated/` but does not modify the active host configuration. It is a good fit for `stream`, `ssl_preread`, PROXY protocol, or custom certificate topologies.
+
+## Option D — edge node
+
+An edge node distributes the bandwidth-heavy ROM/runtime/artwork traffic and does not run the backend/admin plane.
+
+```bash
+git clone https://github.com/indie-master/retro-portal.git
+cd retro-portal
+cp .env.edge.example .env.edge
+```
+
+Configure:
+
+```ini
+EDGE_BIND_ADDR=127.0.0.1
+EDGE_PORT=8088
+CONTROL_ORIGIN_SCHEME=https
+CONTROL_ORIGIN_HOST=origin.arcade.example.com
+CONTROL_ORIGIN_PORT=443
+```
+
+Then:
+
+```bash
+./scripts/install-emulatorjs.sh 4.2.3
+docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
+curl -i http://127.0.0.1:8088/healthz
+```
+
+See **[SCALING.md](SCALING.md)** for multi-node synchronization and LB/CDN setup.
 
 ## TLS examples
 
-Existing wildcard/SAN certificate:
+Existing wildcard/SAN:
 
 ```bash
 sudo ./scripts/install.sh --mode existing --domain arcade.example.com --tls existing
@@ -95,11 +123,7 @@ sudo ./scripts/install.sh --mode existing --domain arcade.example.com --tls exis
 Let's Encrypt HTTP-01:
 
 ```bash
-sudo ./scripts/install.sh \
-  --mode full \
-  --domain arcade.example.com \
-  --tls certbot-http \
-  --email admin@example.com
+sudo ./scripts/install.sh --mode full --domain arcade.example.com --tls certbot-http --email admin@example.com
 ```
 
 Cloudflare DNS-01:
@@ -126,8 +150,6 @@ sudo ./scripts/install.sh \
 
 ## First Library Manager login
 
-Open:
-
 ```text
 https://your-domain/admin.html
 ```
@@ -138,9 +160,11 @@ If `ADMIN_TOKEN` is blank, the backend creates a persistent random token:
 cat catalog/admin-token
 ```
 
-The Library Manager handles ROMs, BIOS files, card editing, dependency checks and metadata review without routine console access.
+Admin endpoints are intentionally disabled on edge nodes.
 
 ## Operations
+
+Standalone/control:
 
 ```bash
 make up
@@ -150,37 +174,44 @@ make down
 make doctor
 ```
 
-or directly:
+Edge:
 
 ```bash
-docker compose up -d --build
-docker compose logs -f --tail=100
-docker compose restart
-docker compose down
+docker compose --env-file .env.edge -f docker-compose.edge.yml ps
+docker compose --env-file .env.edge -f docker-compose.edge.yml logs -f
+docker compose --env-file .env.edge -f docker-compose.edge.yml down
 ```
 
 ## Updating
 
+Recommended:
+
 ```bash
-git pull --ff-only
-./scripts/install-emulatorjs.sh 4.2.3
-docker compose build --pull
-docker compose up -d
-./scripts/doctor.sh --domain arcade.example.com
+./scripts/update.sh --mode standalone
+./scripts/update.sh --mode edge
 ```
 
-Back up `.env`, `catalog/`, `games/` and `public/covers/library/` before upgrades.
+All configured edges from the control node:
+
+```bash
+./scripts/cluster-update.sh --dry-run
+./scripts/cluster-update.sh
+```
+
+See **[UPDATE.md](UPDATE.md)**.
 
 ## Persistent data
 
 ```text
-catalog/runtime-games.json   runtime catalog
-catalog/activity.json        local launch statistics
-games/roms/                  ROMs
-games/bios/                  BIOS files
-public/covers/library/       downloaded/custom covers
-emulatorjs/data/             EmulatorJS runtime
-.env                         local settings/secrets
+catalog/runtime-games.json    runtime catalog
+catalog/stats.json            launch statistics
+games/roms/                   ROMs
+games/bios/                   BIOS files
+public/covers/library/        covers
+public/screenshots/library/   screenshots
+emulatorjs/data/              EmulatorJS runtime
+.env                          standalone/control settings
+.env.edge                     edge settings
 ```
 
-For library management see [LIBRARY.md](LIBRARY.md), for actual application traffic see [NETWORKING.md](NETWORKING.md), and for security guidance see [../../SECURITY.md](../../SECURITY.md).
+For library management see [LIBRARY.md](LIBRARY.md), scaling [SCALING.md](SCALING.md), updating [UPDATE.md](UPDATE.md), networking [NETWORKING.md](NETWORKING.md), removal [UNINSTALL.md](UNINSTALL.md), and security [../../SECURITY.md](../../SECURITY.md).

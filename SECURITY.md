@@ -97,7 +97,53 @@ The backend container:
 - uses bounded PID and tmpfs settings;
 - receives write access only to catalog/stats, ROM, BIOS and cover volumes.
 
-The Nginx container also uses a read-only root filesystem, `no-new-privileges`, bounded PIDs and explicit tmpfs paths.
+The standard web container uses a read-only root filesystem, `no-new-privileges`, bounded PIDs and explicit tmpfs paths.
+
+The scale-out edge container is intentionally smaller and has no backend/admin credentials. It:
+
+- runs as the unprivileged `nginx` user;
+- has a read-only root filesystem;
+- drops all Linux capabilities;
+- enables `no-new-privileges`;
+- receives ROM/BIOS/runtime/artwork mounts as read-only;
+- keeps only temporary Nginx paths in bounded tmpfs mounts;
+- returns `404` for `/admin.html` and `/api/admin/*`.
+
+## Scale-out / cluster threat model
+
+Multi-node mode adds new trust boundaries: SSH synchronization, edge hosts, the control/origin link, and a front load balancer/CDN.
+
+Retro Portal uses the following rules:
+
+- `cluster/nodes.conf` is ignored by Git because it may contain real infrastructure hostnames/IPs;
+- cluster inventory stores no passwords/private keys;
+- `cluster-sync.sh` copies only ROMs, BIOS, artwork/screenshots and optional EmulatorJS runtime;
+- `.env`, `ADMIN_TOKEN`, mutable catalog/state and Git credentials are never replicated to edge nodes;
+- `cluster-sync.sh` and `cluster-update.sh` use SSH `BatchMode` and normal host-key verification rather than disabling `StrictHostKeyChecking`;
+- edge-origin HTTPS enables certificate verification and uses the system CA store;
+- admin endpoints are disabled on edge nodes;
+- resource limits are configurable per edge to stop a replica from consuming the whole host;
+- rolling/canary updates are recommended instead of changing every node simultaneously.
+
+Recommended network controls:
+
+1. prefer a private VLAN/WireGuard/Tailscale path for edge → control/origin;
+2. if the public Internet is used, keep HTTPS verification enabled;
+3. firewall the origin to known edge IPs and administrative addresses where practical;
+4. use a separate admin hostname/private management path for larger installations;
+5. do not expose SSH with password authentication solely for cluster sync; use dedicated keys and least-privilege accounts;
+6. drain an edge from the LB/CDN before maintenance/removal;
+7. treat every edge as a read-only replica: owner changes happen only on control/origin.
+
+The current design deliberately centralizes mutable application state instead of introducing distributed writes. This reduces split-brain and stale-catalog risks. If future versions implement HA backend writers, they should use a real shared datastore with explicit consistency/locking rather than file replication.
+
+## Safe updates and rollback
+
+`scripts/update.sh` refuses a dirty Git working tree, uses `git pull --ff-only`, rebuilds/recreates the selected standalone or edge Compose deployment, and checks local `/healthz`. If a Git update was applied and the new deployment cannot become healthy, the script attempts to reset to the previous commit and rebuild that version.
+
+This is a recovery aid, not a replacement for backups. Before changes that alter persistent data or library formats, create an explicit backup.
+
+For multi-node deployments update control/origin first, then one canary edge, then the rest of the pool.
 
 ## Dependency and code scanning
 
@@ -106,6 +152,8 @@ The repository security workflow runs:
 - `npm audit --omit=dev --audit-level=high` for production Node dependencies;
 - GitHub CodeQL for JavaScript/TypeScript;
 - Dependabot update checks for npm, Docker and GitHub Actions.
+
+The main CI also validates both standard and edge Compose configurations and boots the edge container to verify local health, admin-path denial and container hardening.
 
 A green scan is useful evidence, not a mathematical proof of safety. Newly disclosed vulnerabilities can appear after a release, so updates should be applied continuously.
 
@@ -117,15 +165,16 @@ Never commit:
 - Cloudflare tokens;
 - `ADMIN_TOKEN`;
 - TheGamesDB API keys;
-- commercial ROMs or BIOS files.
+- commercial ROMs or BIOS files;
+- `cluster/nodes.conf` from a real deployment.
 
-Keep `.env` permissions restrictive and back it up separately from the public repository.
+Keep `.env` and `.env.edge` permissions restrictive. Backups created for migration can contain `.env` and `catalog/admin-token`; treat them as secrets.
 
 ## Recommended host controls
 
 For an internet-facing installation:
 
-1. bind Retro Portal itself to `127.0.0.1` and expose it only through the host Nginx;
+1. bind Retro Portal itself to `127.0.0.1` and expose it only through the host Nginx/LB;
 2. enable HTTPS and modern TLS on the host vhost;
 3. use a firewall allowing only required ports;
 4. keep Ubuntu, Docker, browsers and EmulatorJS patched;
@@ -133,7 +182,8 @@ For an internet-facing installation:
 6. consider fail2ban or upstream rate limiting for the public host;
 7. consider ClamAV/quarantine if ROMs are obtained from untrusted sources;
 8. restrict the admin endpoint at the reverse proxy when practical;
-9. inspect `docker compose logs` and Nginx access/error logs for anomalous traffic.
+9. inspect Docker and Nginx logs for anomalous traffic;
+10. on edge hosts, expose only the front proxy/LB-facing port and required management SSH.
 
 ## References
 

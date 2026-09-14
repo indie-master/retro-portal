@@ -1,0 +1,5 @@
+# name|ssh_target|remote_project_path
+# Keep this file free of passwords and private keys. SSH authentication stays in ~/.ssh.
+edge-1|retro@203.0.113.11|/opt/retro-portal
+edge-2|retro@203.0.113.12|/opt/retro-portal
+# edge-3|retro@edge3.example.com|/opt/retro-portal
