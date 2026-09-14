@@ -23,18 +23,15 @@ server {
 
     location ~ /\. { deny all; }
 
-    # Local health endpoint for a load balancer/CDN. It does not depend on the control node.
     location = /healthz {
         access_log off;
         add_header Content-Type text/plain;
         return 200 'ok\n';
     }
 
-    # Administrative endpoints are deliberately unavailable on edge nodes.
     location = /admin.html { return 404; }
     location ^~ /api/admin/ { return 404; }
 
-    # Small dynamic requests stay on the control/origin node.
     location /api/ {
         proxy_pass ${CONTROL_ORIGIN_SCHEME}://${CONTROL_ORIGIN_HOST}:${CONTROL_ORIGIN_PORT};
         proxy_http_version 1.1;
@@ -52,7 +49,6 @@ server {
         proxy_read_timeout 30s;
     }
 
-    # Presence remains centralized so online/current-game counters are consistent across edges.
     location /ws/ {
         proxy_pass ${CONTROL_ORIGIN_SCHEME}://${CONTROL_ORIGIN_HOST}:${CONTROL_ORIGIN_PORT};
         proxy_http_version 1.1;
@@ -75,7 +71,6 @@ server {
         proxy_buffering off;
     }
 
-    # Large/cacheable files are served locally by every edge node.
     location /roms/ {
         alias /srv/roms/;
         autoindex off;
@@ -96,7 +91,15 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
     }
 
-    location /emulatorjs/ {
+    location = /emulatorjs/data/loader.js {
+        alias /srv/emulatorjs/data/loader.js;
+        expires -1;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Cross-Origin-Resource-Policy "same-origin" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    location ^~ /emulatorjs/ {
         alias /srv/emulatorjs/;
         autoindex off;
         expires 30d;
