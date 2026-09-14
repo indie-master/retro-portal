@@ -17,7 +17,7 @@
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.9.0-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.9.1-71cde2"></a>
 </p>
 
 ![Retro Portal home](docs/images/home.png)
@@ -27,6 +27,8 @@
 Retro Portal turns a VPS, mini PC, or home server into a clean browser-based retro game library. A player opens the site, picks a title, and presses **Play**; emulation runs on the player's device in the browser.
 
 The project works as a simple single-node deployment by default and can also scale out: one control/origin node owns the library, admin/API and live state while optional edge nodes or a CDN distribute ROMs, EmulatorJS runtime, artwork and other cacheable assets.
+
+The quick installer deploys the project to **`/opt/retro-portal`**. Retro Portal web/backend services run with Docker Compose. An existing host Nginx/Caddy/Traefik remains an external reverse proxy and is not moved into the application containers.
 
 ## Features
 
@@ -41,6 +43,7 @@ The project works as a simple single-node deployment by default and can also sca
 - Library Manager for ROMs, BIOS files, cards, and publishing;
 - optional metadata proposals from TheGamesDB/Wikipedia with owner approval;
 - Docker Compose, Nginx, and multiple installation modes;
+- Docker-first quick install under `/opt/retro-portal`;
 - single-node mode with no extra infrastructure;
 - optional control/origin + edge + CDN/LB scale-out;
 - SSH/rsync library replication without copying control-node secrets;
@@ -70,29 +73,46 @@ See **[docs/en/LIBRARY.md](docs/en/LIBRARY.md)**.
 
 ## Quick start
 
-### Option 1 — interactive installer
+### Option 1 — recommended `/opt` quick install
+
+Download the bootstrap script and run it as root:
 
 ```bash
-sudo apt update
-sudo apt install -y git
-git clone https://github.com/indie-master/retro-portal.git
-cd retro-portal
-sudo ./scripts/install.sh
+curl -fsSL https://raw.githubusercontent.com/indie-master/retro-portal/main/scripts/quick-install.sh \
+  -o /tmp/retro-portal-install.sh
+sudo bash /tmp/retro-portal-install.sh
 ```
 
-The installer supports full setup, integration with an existing Nginx installation, manual snippets, and a local test mode.
+The bootstrap script installs/checks `git` and `curl`, clones the project to `/opt/retro-portal`, safely fast-forwards an existing clean checkout, prepares writable paths for the non-root backend container, and then runs the main installer.
 
-### Option 2 — Docker Compose
+For a host that already runs Nginx:
 
 ```bash
-git clone https://github.com/indie-master/retro-portal.git
-cd retro-portal
-cp .env.example .env
-./scripts/install-emulatorjs.sh 4.2.3
-docker compose build --pull
-docker compose up -d
+sudo bash /tmp/retro-portal-install.sh \
+  --mode existing \
+  --domain arcade.example.com \
+  --tls existing
+```
+
+Default project directory:
+
+```text
+/opt/retro-portal
+```
+
+### Option 2 — manual Docker Compose
+
+```bash
+sudo git clone https://github.com/indie-master/retro-portal.git /opt/retro-portal
+cd /opt/retro-portal
+sudo cp .env.example .env
+sudo ./scripts/install-emulatorjs.sh 4.2.3
+sudo docker compose build --pull
+sudo docker compose up -d
 curl -i http://127.0.0.1:8088/healthz
 ```
+
+The portal itself stays containerized; host Nginx/Caddy/Traefik can terminate TLS and proxy to `127.0.0.1:8088`.
 
 Full setup guide: **[docs/en/INSTALL.md](docs/en/INSTALL.md)**.
 
@@ -117,6 +137,7 @@ Single-node remains the default. For higher bandwidth/file-I/O loads, add statel
 Edge nodes serve cacheable files locally and proxy small API/WebSocket traffic to control/origin. Admin endpoints are disabled on edges. Because all presence traffic returns to the control node, online and current-game counters stay consistent across the whole pool.
 
 ```bash
+cd /opt/retro-portal
 cp .env.edge.example .env.edge
 ./scripts/install-emulatorjs.sh 4.2.3
 docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
@@ -125,6 +146,7 @@ docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
 Replicate library payload from control to configured edges:
 
 ```bash
+cd /opt/retro-portal
 cp cluster/nodes.example cluster/nodes.conf
 ./scripts/cluster-sync.sh --dry-run
 ./scripts/cluster-sync.sh
@@ -137,18 +159,21 @@ See **[docs/en/SCALING.md](docs/en/SCALING.md)** for LB/CDN examples, inventory 
 Control/standalone:
 
 ```bash
-./scripts/update.sh --mode standalone
+cd /opt/retro-portal
+sudo ./scripts/update.sh --mode standalone
 ```
 
 One edge:
 
 ```bash
-./scripts/update.sh --mode edge
+cd /opt/retro-portal
+sudo ./scripts/update.sh --mode edge
 ```
 
 All configured edges:
 
 ```bash
+cd /opt/retro-portal
 ./scripts/cluster-update.sh --dry-run
 ./scripts/cluster-update.sh
 ```
@@ -160,6 +185,7 @@ See **[docs/en/UPDATE.md](docs/en/UPDATE.md)** for the full workflow and Compose
 ## Safe removal and migration
 
 ```bash
+cd /opt/retro-portal
 sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
 sudo ./scripts/uninstall.sh --domain arcade.example.com
 ```
@@ -167,6 +193,7 @@ sudo ./scripts/uninstall.sh --domain arcade.example.com
 Migration mode creates and verifies a backup before local library/runtime cleanup:
 
 ```bash
+cd /opt/retro-portal
 sudo ./scripts/uninstall.sh \
   --domain arcade.example.com \
   --move \
@@ -176,6 +203,7 @@ sudo ./scripts/uninstall.sh \
 Edge-only removal is scoped to the edge Compose project:
 
 ```bash
+cd /opt/retro-portal
 ./scripts/uninstall-edge.sh --dry-run
 ./scripts/uninstall-edge.sh
 ```

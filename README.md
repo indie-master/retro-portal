@@ -17,7 +17,7 @@
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.9.0-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.9.1-71cde2"></a>
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
@@ -27,6 +27,8 @@
 Retro Portal превращает VPS, мини‑ПК или домашний сервер в аккуратную браузерную библиотеку ретро‑игр. Игрок открывает сайт, выбирает игру и нажимает **Играть** — эмуляция запускается на его устройстве в браузере.
 
 Проект можно держать на одной машине или масштабировать: один control/origin отвечает за библиотеку, admin/API и живую статистику, а несколько edge-нод или CDN распределяют раздачу ROM, EmulatorJS runtime, обложек и статических файлов.
+
+При быстрой установке проект размещается в **`/opt/retro-portal`**. Web и backend Retro Portal работают через Docker Compose; существующий host Nginx/Caddy/Traefik остаётся внешним reverse proxy и не переносится внутрь контейнеров.
 
 ## Возможности
 
@@ -41,6 +43,7 @@ Retro Portal превращает VPS, мини‑ПК или домашний �
 - Library Manager для ROM, BIOS, карточек игр и публикации;
 - автоматические предложения метаданных из TheGamesDB/Wikipedia с подтверждением владельцем;
 - Docker Compose, Nginx и несколько сценариев установки;
+- Docker-first quick install в `/opt/retro-portal`;
 - single-node режим без дополнительной инфраструктуры;
 - optional scale-out через control/origin + edge-ноды + CDN/LB;
 - синхронизация ROM/BIOS/artwork/runtime на edge через SSH/rsync без копирования секретов;
@@ -70,33 +73,55 @@ Library Manager доступен по `/admin.html` и позволяет упр
 
 ## Быстрый старт
 
-### Вариант 1 — интерактивная установка
+### Вариант 1 — рекомендуемая быстрая установка в `/opt`
+
+Скачайте bootstrap-скрипт и запустите его от `root`:
 
 ```bash
-sudo apt update
-sudo apt install -y git
-git clone https://github.com/indie-master/retro-portal.git
-cd retro-portal
-sudo ./scripts/install.sh
+curl -fsSL https://raw.githubusercontent.com/indie-master/retro-portal/main/scripts/quick-install.sh \
+  -o /tmp/retro-portal-install.sh
+sudo bash /tmp/retro-portal-install.sh
 ```
 
-Установщик поддерживает автоматическую установку, интеграцию в существующий Nginx, ручной режим и локальный тест.
+Bootstrap:
 
-### Вариант 2 — Docker Compose
+- устанавливает/проверяет `git` и `curl`;
+- клонирует проект в `/opt/retro-portal`;
+- безопасно обновляет уже существующий чистый checkout через `git pull --ff-only`;
+- подготавливает writable-каталоги для non-root backend контейнера;
+- запускает основной installer;
+- сам Retro Portal остаётся Docker Compose-проектом.
+
+На машине с уже работающим Nginx можно сразу указать режим интеграции:
+
+```bash
+sudo bash /tmp/retro-portal-install.sh \
+  --mode existing \
+  --domain arcade.example.com \
+  --tls existing
+```
+
+Основной каталог после установки:
+
+```text
+/opt/retro-portal
+```
+
+### Вариант 2 — Docker Compose вручную
 
 Если Docker Engine/Compose и reverse proxy уже настроены:
 
 ```bash
-git clone https://github.com/indie-master/retro-portal.git
-cd retro-portal
-cp .env.example .env
-./scripts/install-emulatorjs.sh 4.2.3
-docker compose build --pull
-docker compose up -d
+sudo git clone https://github.com/indie-master/retro-portal.git /opt/retro-portal
+cd /opt/retro-portal
+sudo cp .env.example .env
+sudo ./scripts/install-emulatorjs.sh 4.2.3
+sudo docker compose build --pull
+sudo docker compose up -d
 curl -i http://127.0.0.1:8088/healthz
 ```
 
-По умолчанию приложение удобно держать на `127.0.0.1:8088`, а HTTPS завершать на host Nginx/Caddy/Traefik.
+По умолчанию приложение удобно держать на `127.0.0.1:8088`, а HTTPS завершать на host Nginx/Caddy/Traefik. Host reverse proxy — внешняя инфраструктура; web/backend самого портала работают в контейнерах.
 
 Полная инструкция: **[docs/ru/INSTALL.md](docs/ru/INSTALL.md)**.
 
@@ -123,6 +148,7 @@ Edge обслуживает тяжёлые/cacheable файлы локально
 Запуск edge:
 
 ```bash
+cd /opt/retro-portal
 cp .env.edge.example .env.edge
 # задайте CONTROL_ORIGIN_HOST
 ./scripts/install-emulatorjs.sh 4.2.3
@@ -132,6 +158,7 @@ docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
 Синхронизация библиотеки с control на edge-пул:
 
 ```bash
+cd /opt/retro-portal
 cp cluster/nodes.example cluster/nodes.conf
 ./scripts/cluster-sync.sh --dry-run
 ./scripts/cluster-sync.sh
@@ -144,18 +171,21 @@ cp cluster/nodes.example cluster/nodes.conf
 Обычная установка/control:
 
 ```bash
-./scripts/update.sh --mode standalone
+cd /opt/retro-portal
+sudo ./scripts/update.sh --mode standalone
 ```
 
 Одна edge-нода:
 
 ```bash
-./scripts/update.sh --mode edge
+cd /opt/retro-portal
+sudo ./scripts/update.sh --mode edge
 ```
 
 Весь edge-пул:
 
 ```bash
+cd /opt/retro-portal
 ./scripts/cluster-update.sh --dry-run
 ./scripts/cluster-update.sh
 ```
@@ -169,18 +199,21 @@ Updater использует `git pull --ff-only`, rebuild/recreate контей
 Перед удалением можно увидеть точный план без изменений:
 
 ```bash
+cd /opt/retro-portal
 sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
 ```
 
 Обычное удаление останавливает только текущий Compose-проект и снимает только installer-managed Nginx-vhost; ROM, BIOS, каталог и сертификаты сохраняются:
 
 ```bash
+cd /opt/retro-portal
 sudo ./scripts/uninstall.sh --domain arcade.example.com
 ```
 
 Для переноса на другую машину:
 
 ```bash
+cd /opt/retro-portal
 sudo ./scripts/uninstall.sh \
   --domain arcade.example.com \
   --move \
@@ -190,6 +223,7 @@ sudo ./scripts/uninstall.sh \
 Для удаления только edge-копии:
 
 ```bash
+cd /opt/retro-portal
 ./scripts/uninstall-edge.sh --dry-run
 ./scripts/uninstall-edge.sh
 ```

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.1 — Docker-first `/opt` quick install
+
+- added `scripts/quick-install.sh` for a safe one-command bootstrap into `/opt/retro-portal`;
+- quick install keeps Retro Portal application services in Docker Compose while preserving any existing host reverse proxy as external infrastructure;
+- repeated quick-install runs only fast-forward a clean Retro Portal checkout and refuse unknown/non-project directories;
+- prepared mutable library/catalog paths for the non-root backend container without recursively rewriting ownership of large ROM collections;
+- updated RU/EN README and installation guides so `/opt/retro-portal` is the default quick-install and operations path;
+- documented manual Docker Compose deployment under `/opt`, existing-Nginx integration, updates and removal from the same location;
+- bumped project version to `0.9.1`.
+
 ## 0.9.0 — Scale-out & Safe Updates
 
 - kept the original single-node deployment as the default while adding an optional control/origin + edge architecture;
