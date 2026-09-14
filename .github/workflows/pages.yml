@@ -66,7 +66,7 @@ jobs:
           Only games that are actually playable in the public demo are displayed.
           The included demo ROMs are redistributable homebrew titles.
           EmulatorJS runtime is loaded from the official stable CDN only in the GitHub Pages build.
-          Online/activity statistics are intentionally disabled in Pages and clearly labeled as demo-only.
+          Activity widgets use representative demo data so the complete interface can be previewed.
           EOF
       - name: Validate static demo assets
         run: |
@@ -79,6 +79,8 @@ jobs:
           node --check _site/app.js
           node --check _site/game.js
           node --check _site/controls.js
+          grep -q 'renderDemoActivity' _site/app.js
+          ! grep -RqiE 'без backend|фальшив(ый|ого).*онлайн' _site
       - name: Publish gh-pages branch
         run: |
           cd _site
