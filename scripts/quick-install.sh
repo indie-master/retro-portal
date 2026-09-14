@@ -111,8 +111,23 @@ safe_existing_checkout() {
   return 0
 }
 
+backend_ids() {
+  local uid=1000 gid=1000 value=''
+  if [[ -f "$INSTALL_DIR/.env" ]]; then
+    value="$(sed -n 's/^PUID=//p' "$INSTALL_DIR/.env" | tail -1 | tr -d '[:space:]' || true)"
+    [[ "$value" =~ ^[0-9]+$ ]] && uid="$value"
+    value="$(sed -n 's/^PGID=//p' "$INSTALL_DIR/.env" | tail -1 | tr -d '[:space:]' || true)"
+    [[ "$value" =~ ^[0-9]+$ ]] && gid="$value"
+  fi
+  printf '%s:%s\n' "$uid" "$gid"
+}
+
 prepare_mutable_dirs() {
-  local dir file
+  local dir file ids uid gid
+  ids="$(backend_ids)"
+  uid="${ids%%:*}"
+  gid="${ids##*:}"
+
   for dir in \
     "$INSTALL_DIR/catalog" \
     "$INSTALL_DIR/games/roms" \
@@ -120,7 +135,7 @@ prepare_mutable_dirs() {
     "$INSTALL_DIR/public/covers/library" \
     "$INSTALL_DIR/public/screenshots/library"; do
     mkdir -p "$dir"
-    chown 1000:1000 "$dir"
+    chown "$uid:$gid" "$dir"
     chmod 0755 "$dir"
   done
 
@@ -130,11 +145,11 @@ prepare_mutable_dirs() {
     "$INSTALL_DIR/catalog/stats.json" \
     "$INSTALL_DIR/catalog/activity.json" \
     "$INSTALL_DIR/catalog/metadata-proposals.json"; do
-    [[ -e "$file" ]] && chown 1000:1000 "$file"
+    [[ -e "$file" ]] && chown "$uid:$gid" "$file"
   done
 
   # Artwork is small and may be refreshed by metadata jobs, so normalize existing ownership there.
-  chown -R 1000:1000 "$INSTALL_DIR/public/covers/library" "$INSTALL_DIR/public/screenshots/library"
+  chown -R "$uid:$gid" "$INSTALL_DIR/public/covers/library" "$INSTALL_DIR/public/screenshots/library"
 }
 
 ensure_bootstrap_tools
