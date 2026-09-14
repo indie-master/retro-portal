@@ -21,24 +21,25 @@
   <main class="admin-shell admin-main">
     <section class="admin-hero">
       <div>
-        <p class="eyebrow">ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА СЕРВЕРА</p>
-        <h1>Собирай библиотеку.<br><span>Игроки просто играют.</span></h1>
-        <p>ROM и BIOS настраиваются здесь. Публичный портал показывает только те игры, которые уже полностью готовы к запуску.</p>
+        <p class="eyebrow">КАБИНЕТ ВЛАДЕЛЬЦА</p>
+        <h1>Управляй порталом<br><span>из браузера.</span></h1>
+        <p>ROM, BIOS, карточки, описания, видимость игр и проверка метаданных управляются здесь. После установки для обычной работы консоль не нужна.</p>
       </div>
       <div id="authCard" class="admin-panel auth-card">
-        <label>ADMIN TOKEN<input id="adminToken" type="password" autocomplete="current-password" placeholder="Вставьте токен из .env"></label>
-        <button id="connectAdmin" class="primary" type="button">ПОДКЛЮЧИТЬСЯ</button>
+        <label>ADMIN TOKEN<input id="adminToken" type="password" autocomplete="current-password" placeholder="Токен администратора"></label>
+        <button id="connectAdmin" class="primary" type="button">ВОЙТИ В КАБИНЕТ</button>
         <p id="authMessage" class="admin-muted">Токен хранится только в sessionStorage текущей вкладки.</p>
       </div>
     </section>
 
     <div id="adminApp" hidden>
       <section id="summary" class="admin-summary"></section>
+      <section id="securityPanel" class="admin-panel security-panel"></section>
 
       <section class="admin-grid">
         <article class="admin-panel upload-panel">
           <div class="panel-heading"><div><p class="eyebrow">ДОБАВИТЬ ИГРУ</p><h2>Загрузить ROM</h2></div><span class="step-badge">01</span></div>
-          <p class="admin-muted">Выберите ROM. Для однозначных форматов консоль определится сама. Для CHD/BIN/CUE укажите платформу.</p>
+          <p class="admin-muted">Файл принимает только кабинет администратора. После загрузки портал проверит формат, создаст карточку и подготовит метаданные на утверждение.</p>
           <label>ПЛАТФОРМА<select id="romSystem"><option value="auto">Определить автоматически</option><option value="megadrive">Mega Drive</option><option value="ps1">PlayStation</option><option value="dreamcast">Dreamcast</option><option value="nes">NES</option><option value="snes">SNES</option><option value="gb">Game Boy / Color</option><option value="gba">Game Boy Advance</option><option value="n64">Nintendo 64</option><option value="arcade">Arcade</option></select></label>
           <label class="admin-drop"><input id="romFile" type="file"><strong id="romFileName">Выберите ROM</strong><span>или перетащите файл сюда</span></label>
           <div class="upload-actions"><button id="uploadRom" class="primary" type="button" disabled>ЗАГРУЗИТЬ ROM</button><div class="progress"><i id="romProgress"></i></div></div>
@@ -47,7 +48,7 @@
 
         <article class="admin-panel upload-panel">
           <div class="panel-heading"><div><p class="eyebrow">ЗАВИСИМОСТИ</p><h2>Загрузить BIOS</h2></div><span class="step-badge">02</span></div>
-          <p class="admin-muted">Менеджер покажет BIOS только там, где он действительно нужен. Для известных PS1 BIOS имя определяется по MD5 автоматически.</p>
+          <p class="admin-muted">BIOS никогда не показывается игрокам. Для PS1 известные образы проверяются по хешу; неизвестный BIOS отклоняется.</p>
           <label>СИСТЕМА<select id="biosSystem"><option value="ps1">PlayStation</option><option value="dreamcast">Dreamcast</option></select></label>
           <label>НАЗНАЧЕНИЕ<select id="biosTarget"><option value="">Определить по файлу</option><option value="scph5501.bin">PS1 US — scph5501.bin</option><option value="scph5502.bin">PS1 EU — scph5502.bin</option><option value="scph5500.bin">PS1 JP — scph5500.bin</option><option value="dc_boot.bin">Dreamcast — dc_boot.bin</option><option value="dc_flash.bin">Dreamcast — dc_flash.bin</option></select></label>
           <label class="admin-drop compact"><input id="biosFile" type="file"><strong id="biosFileName">Выберите BIOS</strong></label>
@@ -57,12 +58,12 @@
       </section>
 
       <section class="admin-panel scan-panel">
-        <div><p class="eyebrow">ЕСЛИ ROM УЖЕ СКОПИРОВАНЫ НА СЕРВЕР</p><h2>Сканирование папок</h2><p class="admin-muted">Можно загружать большие образы через SCP/SFTP в <code>games/roms/&lt;platform&gt;/</code>, затем нажать «Сканировать». Новые игры автоматически появятся в каталоге.</p></div>
+        <div><p class="eyebrow">БОЛЬШАЯ БИБЛИОТЕКА</p><h2>Сканирование папок</h2><p class="admin-muted">Если образы уже скопированы через SCP/SFTP в <code>games/roms/&lt;platform&gt;/</code>, нажмите «Сканировать». Новые игры зарегистрируются автоматически.</p></div>
         <button id="scanLibrary" class="secondary" type="button">↻ СКАНИРОВАТЬ</button>
       </section>
 
       <section class="library-manager">
-        <div class="manager-heading"><div><p class="eyebrow">СОСТОЯНИЕ БИБЛИОТЕКИ</p><h2>Игры и зависимости</h2></div><button id="refreshAdmin" class="ghost-button" type="button">Обновить</button></div>
+        <div class="manager-heading"><div><p class="eyebrow">СОСТОЯНИЕ БИБЛИОТЕКИ</p><h2>Игры, описания и публикация</h2></div><button id="refreshAdmin" class="ghost-button" type="button">Обновить</button></div>
         <div id="managerNotice" class="admin-muted"></div>
         <div id="adminGames" class="admin-games"></div>
       </section>
