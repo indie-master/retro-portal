@@ -4,7 +4,7 @@ Retro Portal is designed for self-hosting and uses a defense-in-depth model. Sec
 
 ## Important limitation
 
-No internet-facing application can truthfully be guaranteed impossible to compromise. The project aims to minimize attack surface, isolate untrusted game data, validate uploads and fail safely. Keep the host OS, Docker, Nginx, EmulatorJS and dependencies updated.
+No internet-facing application can truthfully be guaranteed impossible to compromise. The project aims to minimize attack surface, isolate untrusted game data, validate uploads and fail safely. Keep the host OS, Docker, Nginx, EmulatorJS, browser engines and dependencies updated.
 
 ## Trust boundaries
 
@@ -23,6 +23,22 @@ A normal visitor **cannot upload a ROM or BIOS to server storage**. `/local.html
 
 Only the protected `/admin.html` API may upload ROM/BIOS files, scan server folders, change cards or approve metadata. Use a long random `ADMIN_TOKEN`, serve the site only over HTTPS, and do not share that token.
 
+For higher-risk/public installations, place `/admin.html` and `/api/admin/` behind an additional host-level control such as an IP allowlist, VPN/private management network, mTLS, or a second authentication layer. The application token should not be treated as the only possible perimeter.
+
+## ROM threat boundary
+
+A ROM is untrusted binary input to an emulator core. File-name, extension and magic checks can reject obviously invalid uploads, but **they cannot prove that a ROM is safe for every emulator implementation**.
+
+Retro Portal therefore separates the risks:
+
+- the backend stores and serves ROM bytes; it does not execute them as host programs;
+- emulation runs in the user's browser through EmulatorJS/libretro cores;
+- a malicious ROM that exploits a bug in an emulator core would primarily target that client-side emulator/browser boundary, not become a server-side executable merely by being uploaded;
+- only the administrator can publish server-hosted ROMs;
+- public users' own ROMs remain local to their own browser.
+
+Use ROMs from sources you trust, keep EmulatorJS/cores and browsers updated, and consider quarantine/malware scanning when importing files from untrusted third parties. Antivirus scanning is defense in depth; it is not a substitute for keeping emulator cores patched.
+
 ## File-upload controls
 
 The server-side upload path follows an allowlist model inspired by the OWASP File Upload Cheat Sheet:
@@ -34,7 +50,7 @@ The server-side upload path follows an allowlist model inspired by the OWASP Fil
 - known container/file formats are checked by file signature where reliable;
 - ZIP browser uploads are disabled by default (`ALLOW_ZIP_ROMS=0`);
 - multi-file CUE/GDI browser uploads are rejected; copy them through a trusted admin channel and scan the folder instead;
-- unknown PS1 BIOS images can be rejected unless recognized by a known hash/name flow;
+- known PlayStation BIOS hashes can be recognized and canonicalized;
 - ROM/BIOS data is never executed as an operating-system program by the backend;
 - uploaded data lives on dedicated mounted paths rather than inside the application code tree.
 
@@ -66,7 +82,9 @@ HSTS should be enabled on the **public TLS vhost** after HTTPS is verified. It i
 
 ## WebSocket / online counter
 
-The presence WebSocket validates same-origin requests and caps message payload size. The public online counter is based on random browser-session identifiers and is intended as an approximate real count of active browser sessions, not a security identity system.
+The presence WebSocket validates same-origin browser requests when an Origin header is present and caps message payload size. The public online counter is based on random browser-session identifiers and is intended as an approximate real count of active browser sessions, not a security identity system.
+
+Presence/popularity data must not be treated as authentication, billing, anti-fraud or another security-sensitive metric. Non-browser clients can potentially attempt to imitate public presence traffic, so these numbers are deliberately informational only.
 
 ## Container hardening
 
@@ -80,6 +98,16 @@ The backend container:
 - receives write access only to catalog/stats, ROM, BIOS and cover volumes.
 
 The Nginx container also uses a read-only root filesystem, `no-new-privileges`, bounded PIDs and explicit tmpfs paths.
+
+## Dependency and code scanning
+
+The repository security workflow runs:
+
+- `npm audit --omit=dev --audit-level=high` for production Node dependencies;
+- GitHub CodeQL for JavaScript/TypeScript;
+- Dependabot update checks for npm, Docker and GitHub Actions.
+
+A green scan is useful evidence, not a mathematical proof of safety. Newly disclosed vulnerabilities can appear after a release, so updates should be applied continuously.
 
 ## Secrets
 
@@ -100,11 +128,12 @@ For an internet-facing installation:
 1. bind Retro Portal itself to `127.0.0.1` and expose it only through the host Nginx;
 2. enable HTTPS and modern TLS on the host vhost;
 3. use a firewall allowing only required ports;
-4. keep Ubuntu and Docker patched;
+4. keep Ubuntu, Docker, browsers and EmulatorJS patched;
 5. make periodic offline backups of `catalog/`, ROMs, BIOS and covers;
 6. consider fail2ban or upstream rate limiting for the public host;
 7. consider ClamAV/quarantine if ROMs are obtained from untrusted sources;
-8. inspect `docker compose logs` and Nginx access/error logs for anomalous traffic.
+8. restrict the admin endpoint at the reverse proxy when practical;
+9. inspect `docker compose logs` and Nginx access/error logs for anomalous traffic.
 
 ## References
 
