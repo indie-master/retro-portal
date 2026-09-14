@@ -48,8 +48,12 @@ jobs:
           test -s .env.edge.example
           test -s cluster/nodes.example
           test -s SECURITY.md
-          grep -q 'catalog/admin-token' .gitignore
-          grep -q 'cluster/nodes.conf' .gitignore
+          grep -q '^catalog/admin-token$' .gitignore
+          grep -q '^catalog/runtime-games.json$' .gitignore
+          grep -q '^catalog/stats.json$' .gitignore
+          grep -q '^catalog/activity.json$' .gitignore
+          grep -q '^catalog/metadata-proposals.json$' .gitignore
+          grep -q '^cluster/nodes.conf$' .gitignore
       - name: Public demo copy
         run: |
           grep -q 'renderDemoActivity' pages/app.js
