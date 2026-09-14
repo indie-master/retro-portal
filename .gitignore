@@ -1,10 +1,14 @@
 .env
 .env.*
 !.env.example
+!.env.edge.example
 
 # Runtime secrets and mutable catalog
 catalog/admin-token
 catalog/runtime-games.json
+
+# Private scale-out inventory (may contain real hostnames/IPs)
+cluster/nodes.conf
 
 # Runtime emulator data
 emulatorjs/data/
