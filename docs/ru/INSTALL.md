@@ -1,6 +1,6 @@
 # Установка Retro Portal
 
-[← README](../../README.md) · [Library Manager](LIBRARY.md) · [Nginx/TLS](NGINX.md) · [Сеть](NETWORKING.md) · [Диагностика](TROUBLESHOOTING.md)
+[← README](../../README.md) · [Удаление / перенос](UNINSTALL.md) · [Library Manager](LIBRARY.md) · [Nginx/TLS](NGINX.md) · [Сеть](NETWORKING.md) · [Диагностика](TROUBLESHOOTING.md)
 
 ## Что понадобится
 
@@ -180,11 +180,38 @@ docker compose up -d
 
 Перед обновлением сохраните `.env`, `catalog/`, `games/` и `public/covers/library/`.
 
+## Удаление и перенос
+
+Перед удалением сначала посмотрите план:
+
+```bash
+sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
+```
+
+Обычное удаление снимает только installer-managed Nginx-vhost и останавливает текущий Compose-проект. Данные библиотеки, сертификаты и системные пакеты сохраняются:
+
+```bash
+sudo ./scripts/uninstall.sh --domain arcade.example.com
+```
+
+Для переноса на другой сервер используйте migration mode:
+
+```bash
+sudo ./scripts/uninstall.sh \
+  --domain arcade.example.com \
+  --move \
+  --backup-dir /root/retro-portal-backups
+```
+
+Перед очисткой данных будет создан и проверен backup + SHA-256. Скрипт не выполняет глобальные Docker prune-команды и не удаляет Nginx/Docker/Certbot или чужие сервисы.
+
+Подробная инструкция и rollback-поведение: **[UNINSTALL.md](UNINSTALL.md)**.
+
 ## Где лежат данные
 
 ```text
 catalog/runtime-games.json   рабочий каталог
-catalog/activity.json        локальная статистика запусков
+catalog/stats.json           локальная статистика запусков
 games/roms/                  ROM
 games/bios/                  BIOS
 public/covers/library/       обложки
@@ -202,4 +229,4 @@ sudo nginx -t
 docker compose ps
 ```
 
-Для подробностей по библиотеке см. [LIBRARY.md](LIBRARY.md), по сетевому поведению — [NETWORKING.md](NETWORKING.md), по security — [../../SECURITY.md](../../SECURITY.md).
+Для подробностей по библиотеке см. [LIBRARY.md](LIBRARY.md), по сетевому поведению — [NETWORKING.md](NETWORKING.md), по безопасному удалению — [UNINSTALL.md](UNINSTALL.md), по security — [../../SECURITY.md](../../SECURITY.md).
