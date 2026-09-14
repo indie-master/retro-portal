@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.2 — Production polish
+
+- preserve the actual client address through the host reverse proxy into the Docker web container so access logs and backend throttling no longer see only the Docker gateway;
+- added owner-side JPG/PNG/WebP cover uploads from each game editor with an 8 MB limit and image-signature validation;
+- fixed uploaded ROM/BIOS permissions so validated final files are readable by the read-only web container while temporary upload files remain private;
+- stopped long-lived immutable caching for the EmulatorJS bootstrap loader so transient runtime delivery errors do not stick in browsers;
+- simplified game cards without artwork by removing the generated text-heavy pseudo-cover;
+- extended CI with real-IP logging, ROM mode, cover upload/mode and public-delivery checks;
+- bumped project version to `0.9.2`.
+
 ## 0.9.1 — Docker-first `/opt` quick install
 
 - added `scripts/quick-install.sh` for a safe one-command bootstrap into `/opt/retro-portal`;
