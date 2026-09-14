@@ -3,9 +3,10 @@
 <p align="center"><strong>Self-hosted библиотека ретро-игр с запуском прямо в браузере.</strong></p>
 
 <p align="center">
-  <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 ОТКРЫТЬ LIVE DEMO</strong></a>
+  <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README_EN.md">English</a>
   &nbsp;·&nbsp; <a href="docs/ru/INSTALL.md">Установка</a>
+  &nbsp;·&nbsp; <a href="docs/ru/MOBILE.md">Мобильная игра</a>
   &nbsp;·&nbsp; <a href="docs/ru/SCALING.md">Масштабирование</a>
   &nbsp;·&nbsp; <a href="docs/ru/UPDATE.md">Обновление</a>
   &nbsp;·&nbsp; <a href="docs/ru/UNINSTALL.md">Удаление / перенос</a>
@@ -15,67 +16,67 @@
 <p align="center">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-d99a47"></a>
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
-  <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
+  <a href="https://docs.docker.com/engine/"><img alt="Docker Compose" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.9.1-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.10.0-71cde2"></a>
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
 
 ## Что это
 
-Retro Portal превращает VPS, мини‑ПК или домашний сервер в аккуратную браузерную библиотеку ретро‑игр. Игрок открывает сайт, выбирает игру и нажимает **Играть** — эмуляция запускается на его устройстве в браузере.
+Retro Portal превращает VPS, мини‑ПК или домашний сервер в игровую библиотеку: посетитель выбирает игру, браузер получает ROM/runtime и запускает эмуляцию локально на устройстве.
 
-Проект можно держать на одной машине или масштабировать: один control/origin отвечает за библиотеку, admin/API и живую статистику, а несколько edge-нод или CDN распределяют раздачу ROM, EmulatorJS runtime, обложек и статических файлов.
-
-При быстрой установке проект размещается в **`/opt/retro-portal`**. Web и backend Retro Portal работают через Docker Compose; существующий host Nginx/Caddy/Traefik остаётся внешним reverse proxy и не переносится внутрь контейнеров.
+Проект одинаково подходит для одной машины и для scale-out схемы с несколькими edge-нодами/CDN. Быстрая установка размещает приложение в **`/opt/retro-portal`**, а web/backend/metadata работают через Docker Compose; существующий host Nginx/Caddy/Traefik остаётся внешним reverse proxy.
 
 ## Возможности
 
-- запуск игр прямо в браузере через EmulatorJS;
-- Mega Drive, PlayStation, NES, SNES, Game Boy, GBA, Nintendo 64 и Arcade;
-- экспериментальная поддержка Dreamcast;
-- поиск, платформенные полки, избранное и фильтр игр на двоих;
-- собственная раскладка клавиатуры для одной игры или всей платформы;
-- поддержка геймпада;
+- Mega Drive, PlayStation, NES, SNES, Game Boy, GBA, Nintendo 64 и Arcade через EmulatorJS;
+- экспериментальный Dreamcast-профиль;
+- desktop-клавиатура, USB/Bluetooth gamepad и touch-first мобильный режим;
+- мобильный fullscreen, safe-area и best-effort landscape lock;
 - локальный запуск собственного ROM без отправки файла на сервер;
-- online presence, блок «Во что играют сейчас» и популярность за 7 дней;
-- Library Manager для ROM, BIOS, карточек игр и публикации;
-- автоматические предложения метаданных из TheGamesDB/Wikipedia с подтверждением владельцем;
-- Docker Compose, Nginx и несколько сценариев установки;
-- Docker-first quick install в `/opt/retro-portal`;
-- single-node режим без дополнительной инфраструктуры;
-- optional scale-out через control/origin + edge-ноды + CDN/LB;
-- синхронизация ROM/BIOS/artwork/runtime на edge через SSH/rsync без копирования секретов;
-- rolling update control/edge с health check и попыткой rollback;
-- безопасное штатное удаление/перенос без глобальной очистки Docker или Nginx.
+- Library Manager для ROM, BIOS, обложек, карточек и публикации;
+- **автоматическое platform-aware оформление игр**: описание, история, год, количество игроков и box-art;
+- TheGamesDB с фильтром конкретной платформы, Wikipedia fallback и системные Libretro thumbnails для обложек;
+- ручные правки владельца сохраняются по умолчанию;
+- online presence, «во что играют сейчас» и популярность за 7 дней;
+- реальные client IP в container access log при корректной настройке reverse proxy;
+- single-node и control/origin + edge/CDN режимы;
+- безопасные rolling update, rollback, перенос и удаление.
 
 ## Live Demo
 
 **https://indie-master.github.io/retro-portal/**
 
-Публичная сборка содержит только свободно распространяемые demo/homebrew ROM. Блок активности заполнен демонстрационными данными, чтобы можно было увидеть весь интерфейс в рабочем виде. В self-hosted установке те же блоки получают данные от встроенного backend.
+GitHub Pages содержит только свободно распространяемые demo/homebrew ROM. Activity-блок использует демонстрационные данные для показа интерфейса; self-hosted установка получает activity от собственного backend.
 
-## Интерфейс владельца
+## Library Manager
 
-Library Manager доступен по `/admin.html` и позволяет управлять коллекцией без постоянной работы через консоль:
+`/admin.html` позволяет без ручного JSON:
 
-- загрузка ROM и BIOS;
-- сканирование библиотеки после SCP/SFTP;
-- проверка готовности игры к запуску;
-- редактирование названия, описания, истории и порядка сортировки;
-- featured/visibility;
-- получение и подтверждение метаданных.
+- загружать ROM/BIOS и сканировать уже скопированную библиотеку;
+- видеть готовность игр и обязательные BIOS;
+- редактировать название, год, описание, историю, featured/visibility и сортировку;
+- вручную загружать JPG/PNG/WebP обложки;
+- запускать ручной metadata lookup при необходимости.
 
-![Library Manager / админ-панель](docs/images/admin.png)
+Начиная с 0.10 отдельный внутренний `metadata` worker сам обрабатывает новые и неполные карточки. По умолчанию он **не перезаписывает** заполненные владельцем поля.
 
-Подробно: **[docs/ru/LIBRARY.md](docs/ru/LIBRARY.md)**.
+```ini
+THEGAMESDB_API_KEY=
+WIKIPEDIA_METADATA=1
+AUTO_METADATA=1
+AUTO_METADATA_OVERWRITE=0
+AUTO_METADATA_INTERVAL=600
+AUTO_METADATA_BATCH=8
+```
 
-## Быстрый старт
+TheGamesDB key необязателен: без него остаются Wikipedia + Libretro fallback. Подробнее: **[docs/ru/LIBRARY.md](docs/ru/LIBRARY.md)**.
 
-### Вариант 1 — рекомендуемая быстрая установка в `/opt`
+![Library Manager](docs/images/admin.png)
 
-Скачайте bootstrap-скрипт и запустите его от `root`:
+## Быстрая установка
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/indie-master/retro-portal/main/scripts/quick-install.sh \
@@ -83,16 +84,13 @@ curl -fsSL https://raw.githubusercontent.com/indie-master/retro-portal/main/scri
 sudo bash /tmp/retro-portal-install.sh
 ```
 
-Bootstrap:
+Рекомендуемый каталог:
 
-- устанавливает/проверяет `git` и `curl`;
-- клонирует проект в `/opt/retro-portal`;
-- безопасно обновляет уже существующий чистый checkout через `git pull --ff-only`;
-- подготавливает writable-каталоги для non-root backend контейнера;
-- запускает основной installer;
-- сам Retro Portal остаётся Docker Compose-проектом.
+```text
+/opt/retro-portal
+```
 
-На машине с уже работающим Nginx можно сразу указать режим интеграции:
+На машине с существующим Nginx:
 
 ```bash
 sudo bash /tmp/retro-portal-install.sh \
@@ -101,223 +99,114 @@ sudo bash /tmp/retro-portal-install.sh \
   --tls existing
 ```
 
-Основной каталог после установки:
+Для сложного существующего `stream`/SNI Nginx используйте `manual` или аккуратно интегрируйте inner-vhost отдельно. Полная инструкция: **[docs/ru/INSTALL.md](docs/ru/INSTALL.md)**.
 
-```text
-/opt/retro-portal
-```
+## Мобильная игра
 
-### Вариант 2 — Docker Compose вручную
+На touch-устройстве страница игры показывает **Мобильный режим**. Кнопка запрашивает fullscreen, пытается зафиксировать landscape и оставляет игровую область на весь доступный viewport. Виртуальный gamepad предоставляет EmulatorJS.
 
-Если Docker Engine/Compose и reverse proxy уже настроены:
-
-```bash
-sudo git clone https://github.com/indie-master/retro-portal.git /opt/retro-portal
-cd /opt/retro-portal
-sudo cp .env.example .env
-sudo ./scripts/install-emulatorjs.sh 4.2.3
-sudo docker compose build --pull
-sudo docker compose up -d
-curl -i http://127.0.0.1:8088/healthz
-```
-
-По умолчанию приложение удобно держать на `127.0.0.1:8088`, а HTTPS завершать на host Nginx/Caddy/Traefik. Host reverse proxy — внешняя инфраструктура; web/backend самого портала работают в контейнерах.
-
-Полная инструкция: **[docs/ru/INSTALL.md](docs/ru/INSTALL.md)**.
+Подробнее: **[docs/ru/MOBILE.md](docs/ru/MOBILE.md)**.
 
 ## Масштабирование
 
-Single-node остаётся режимом по умолчанию. Для более высокой нагрузки можно добавить stateless edge-ноды:
+Одна машина остаётся режимом по умолчанию:
 
 ```text
-                  CDN / Load Balancer
-                         │
-            ┌────────────┼────────────┐
-            │            │            │
-          EDGE-1       EDGE-2       EDGE-N
-       static/ROM    static/ROM    static/ROM
-            └────────────┬────────────┘
-                         │ API / WS
-                         ▼
-                  CONTROL / ORIGIN
-                 backend + admin + stats
+Internet → reverse proxy → 127.0.0.1:8088 → Retro Portal Docker
 ```
 
-Edge обслуживает тяжёлые/cacheable файлы локально и проксирует небольшой API/WebSocket трафик к control/origin. Admin API на edge отключён. Online/current-game статистика остаётся общей, потому что WebSocket централизован на control-ноде.
+Для нагрузки можно добавить edge pool:
 
-Запуск edge:
-
-```bash
-cd /opt/retro-portal
-cp .env.edge.example .env.edge
-# задайте CONTROL_ORIGIN_HOST
-./scripts/install-emulatorjs.sh 4.2.3
-docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
+```text
+                    CDN / Load Balancer
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+            EDGE-1       EDGE-2       EDGE-N
+         ROM/runtime   ROM/runtime   ROM/runtime
+              └────────────┬────────────┘
+                           │ API / WS
+                           ▼
+                    CONTROL / ORIGIN
+               backend + metadata + admin
 ```
 
-Синхронизация библиотеки с control на edge-пул:
+Edge раздаёт тяжёлые статические payload локально, а API/WebSocket остаются централизованы. Admin endpoints на edge отключены. Подробнее: **[docs/ru/SCALING.md](docs/ru/SCALING.md)**.
 
-```bash
-cd /opt/retro-portal
-cp cluster/nodes.example cluster/nodes.conf
-./scripts/cluster-sync.sh --dry-run
-./scripts/cluster-sync.sh
+## Реальный IP за reverse proxy
+
+Обычный Nginx должен передавать нормализованный адрес в `X-Real-IP`. Если public `:443` принадлежит `stream` и inner HTTPS принимает `proxy_protocol`, используйте именно `$proxy_protocol_addr`:
+
+```nginx
+proxy_set_header X-Real-IP $proxy_protocol_addr;
+proxy_set_header X-Forwarded-For $proxy_protocol_addr;
 ```
 
-Подробная архитектура, LB/CDN и схема для нескольких серверов: **[docs/ru/SCALING.md](docs/ru/SCALING.md)**.
+Container log показывает client IP первым полем, а `peer=` оставляет адрес Docker hop для диагностики. Не доверяйте произвольному `X-Real-IP` от Интернета; CDN/LB client-IP header нужно нормализовать на host proxy только от доверенных proxy ranges.
+
+Подробнее: **[docs/ru/NETWORKING.md](docs/ru/NETWORKING.md)**.
 
 ## Обновление
-
-Обычная установка/control:
 
 ```bash
 cd /opt/retro-portal
 sudo ./scripts/update.sh --mode standalone
 ```
 
-Одна edge-нода:
+Edge:
 
 ```bash
-cd /opt/retro-portal
 sudo ./scripts/update.sh --mode edge
 ```
 
-Весь edge-пул:
+Updater требует чистый Git checkout, использует `git pull --ff-only`, rebuild/recreate, проверяет `/healthz` и пытается откатить предыдущий commit при неудачном health check. Подробнее: **[docs/ru/UPDATE.md](docs/ru/UPDATE.md)**.
 
-```bash
-cd /opt/retro-portal
-./scripts/cluster-update.sh --dry-run
-./scripts/cluster-update.sh
-```
+## Безопасное удаление / перенос
 
-Updater использует `git pull --ff-only`, rebuild/recreate контейнеров и локальный health check. Если новая версия не становится healthy, скрипт пытается вернуть предыдущий commit и контейнеры предыдущей версии.
-
-Полная инструкция и Docker Compose-only сценарий: **[docs/ru/UPDATE.md](docs/ru/UPDATE.md)**.
-
-## Безопасное удаление и перенос
-
-Перед удалением можно увидеть точный план без изменений:
+Сначала dry-run:
 
 ```bash
 cd /opt/retro-portal
 sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
 ```
 
-Обычное удаление останавливает только текущий Compose-проект и снимает только installer-managed Nginx-vhost; ROM, BIOS, каталог и сертификаты сохраняются:
+Перенос с verified backup:
 
 ```bash
-cd /opt/retro-portal
-sudo ./scripts/uninstall.sh --domain arcade.example.com
-```
-
-Для переноса на другую машину:
-
-```bash
-cd /opt/retro-portal
 sudo ./scripts/uninstall.sh \
   --domain arcade.example.com \
   --move \
   --backup-dir /root/retro-portal-backups
 ```
 
-Для удаления только edge-копии:
-
-```bash
-cd /opt/retro-portal
-./scripts/uninstall-edge.sh --dry-run
-./scripts/uninstall-edge.sh
-```
-
-Подробно: **[docs/ru/UNINSTALL.md](docs/ru/UNINSTALL.md)**.
-
-## Как устроено
-
-```text
-Браузер игрока
-  ├─ HTML / CSS / JS
-  ├─ EmulatorJS runtime / WASM
-  ├─ ROM / BIOS для выбранной игры
-  └─ WebSocket presence
-          ↓
-      Reverse proxy / CDN / edge
-          ↓
-      Retro Portal control
-      ├─ API
-      ├─ каталог
-      ├─ статистика
-      └─ Library Manager
-```
-
-После загрузки ROM и runtime сама эмуляция идёт на устройстве игрока. Сервер отвечает за web‑интерфейс, файлы библиотеки, API, presence и административные функции.
-
-Сетевые endpoint'ы, кеширование и reverse proxy: **[docs/ru/NETWORKING.md](docs/ru/NETWORKING.md)**.
-
-## Управление
-
-По умолчанию используется привычная desktop‑раскладка:
-
-```text
-Стрелки     движение
-Z / X       основные действия
-A / S / D   дополнительные кнопки
-Q / W       плечевые кнопки
-Enter       Start
-Shift       Select / Mode
-```
-
-Раскладку можно изменить прямо на странице игры и сохранить отдельно для конкретной игры или всей платформы.
-
-## Активность
-
-Self-hosted версия считает активные браузерные сессии через WebSocket и хранит историю запусков для недельного рейтинга. В scale-out режиме все edge проксируют presence на один control/origin, поэтому счётчик и «Во что играют сейчас» остаются общими для всего пула.
+Uninstaller не запускает глобальные Docker prune-команды, не удаляет Docker/Nginx/Certbot и не переписывает произвольные shared stream maps. Подробнее: **[docs/ru/UNINSTALL.md](docs/ru/UNINSTALL.md)**.
 
 ## Безопасность
 
-Проект использует защиту в несколько слоёв:
-
-- admin API защищён `ADMIN_TOKEN` и throttling от перебора;
-- ROM/BIOS upload ограничен allowlist'ами форматов и размером;
-- небезопасные имена файлов не используются как server-side пути;
+- backend и metadata worker — non-root, read-only root filesystem, capabilities dropped, `no-new-privileges`;
+- metadata worker не имеет публичного listener;
+- ROM/BIOS/cover uploads — только admin API;
+- file size/type/signature validation;
 - ZIP upload выключен по умолчанию;
-- metadata fetch ограничен доверенными источниками;
-- backend работает non-root, с read-only root filesystem, `no-new-privileges` и без Linux capabilities;
-- edge-контейнер работает unprivileged, read-only, без Linux capabilities и не содержит admin token;
-- edge → origin через Internet рассчитан на HTTPS с обязательной проверкой сертификата;
-- cluster inventory исключён из Git, а sync/update используют SSH host-key verification;
-- Nginx добавляет CSP, anti-clickjacking, security headers и rate limits;
-- CI запускает syntax/config checks, standalone и edge runtime checks, `npm audit` и CodeQL.
+- external artwork hosts allowlisted, redirects rejected, download size limited, image signature revalidated;
+- admin/API throttling, CSP, anti-framing и browser security headers;
+- CodeQL + production dependency audit + Docker/Nginx/runtime CI.
 
-Полный threat model и рекомендации по публикации в Интернет: **[SECURITY.md](SECURITY.md)**.
+Полный threat model: **[SECURITY.md](SECURITY.md)**.
 
 ## Документация
 
 | Раздел | Документ |
 |---|---|
 | Установка | [docs/ru/INSTALL.md](docs/ru/INSTALL.md) |
+| Library Manager | [docs/ru/LIBRARY.md](docs/ru/LIBRARY.md) |
+| Мобильная игра | [docs/ru/MOBILE.md](docs/ru/MOBILE.md) |
+| Сеть / real IP / reverse proxy | [docs/ru/NETWORKING.md](docs/ru/NETWORKING.md) |
 | Масштабирование | [docs/ru/SCALING.md](docs/ru/SCALING.md) |
 | Обновление | [docs/ru/UPDATE.md](docs/ru/UPDATE.md) |
 | Удаление / перенос | [docs/ru/UNINSTALL.md](docs/ru/UNINSTALL.md) |
-| Library Manager | [docs/ru/LIBRARY.md](docs/ru/LIBRARY.md) |
-| Nginx / TLS | [docs/ru/NGINX.md](docs/ru/NGINX.md) |
-| Сеть и reverse proxy | [docs/ru/NETWORKING.md](docs/ru/NETWORKING.md) |
-| ROM / BIOS | [docs/ru/ROMS.md](docs/ru/ROMS.md) |
-| Dreamcast | [docs/ru/DREAMCAST.md](docs/ru/DREAMCAST.md) |
-| Диагностика | [docs/ru/TROUBLESHOOTING.md](docs/ru/TROUBLESHOOTING.md) |
 | Безопасность | [SECURITY.md](SECURITY.md) |
-| Сторонние компоненты | [THIRD_PARTY.md](THIRD_PARTY.md) |
 
-## Компоненты
+## Контент и лицензии
 
-- [EmulatorJS](https://emulatorjs.org/) — браузерная эмуляция;
-- [Docker Engine / Compose](https://docs.docker.com/engine/) — контейнеризация;
-- [Nginx](https://nginx.org/) — web/reverse proxy;
-- [TheGamesDB](https://thegamesdb.net/) — опциональные игровые метаданные;
-- [MediaWiki API](https://www.mediawiki.org/wiki/API:Main_page) — опциональная история игр.
-
-## ROM и BIOS
-
-Коммерческие ROM, BIOS и официальные artwork не входят в репозиторий. Пользователь добавляет собственные файлы самостоятельно. В публичном demo используются только ROM, разрешённые к распространению.
-
-## Лицензия
-
-Код Retro Portal распространяется по [MIT License](LICENSE).
+Репозиторий не включает коммерческие ROM, проприетарные BIOS или официальные коммерческие artwork. Demo содержит только redistributable homebrew-контент. Владелец self-hosted инсталляции отвечает за право использования добавленных ROM/BIOS/изображений и материалов, получаемых через включённые им внешние metadata providers.
