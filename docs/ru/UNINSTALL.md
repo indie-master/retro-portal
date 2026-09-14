@@ -1,26 +1,19 @@
 # Безопасное удаление и перенос Retro Portal
 
-[← README](../../README.md) · [Установка](INSTALL.md) · [Nginx/TLS](NGINX.md) · [Диагностика](TROUBLESHOOTING.md)
+[← README](../../README.md) · [Установка](INSTALL.md) · [Масштабирование](SCALING.md) · [Обновление](UPDATE.md) · [Nginx/TLS](NGINX.md) · [Диагностика](TROUBLESHOOTING.md)
 
 Retro Portal рассчитан на установку рядом с другими сервисами. Поэтому удаление специально сделано **консервативным**: скрипт удаляет только то, что может однозначно определить как принадлежащее Retro Portal, и не выполняет глобальную очистку Docker/Nginx.
 
 ## Главное правило
 
-Не удаляйте каталоги и Nginx-конфиги вручную до запуска `scripts/uninstall.sh`. Сначала выполните dry-run, затем штатное удаление.
+Не удаляйте каталоги и Nginx-конфиги вручную до запуска штатного скрипта. Для control/single-node сначала выполните dry-run:
 
 ```bash
 cd /path/to/retro-portal
 sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
 ```
 
-Dry-run ничего не меняет и показывает:
-
-- какой Nginx-vhost будет отключён;
-- какие контейнеры относятся к текущему Compose-проекту;
-- будет ли создан backup;
-- какие данные будут сохранены или удалены.
-
-## Обычное безопасное удаление
+## Обычное безопасное удаление control/single-node
 
 ```bash
 sudo ./scripts/uninstall.sh --domain arcade.example.com
@@ -37,11 +30,35 @@ sudo ./scripts/uninstall.sh --domain arcade.example.com
 7. после успешного отключения Nginx останавливает только контейнеры текущего Retro Portal Compose-проекта;
 8. сохраняет ROM, BIOS, обложки, каталог, `.env` и EmulatorJS runtime.
 
-После этого портал не занимает RAM/CPU контейнерами, но библиотека остаётся на диске и может быть поднята снова.
+После этого портал не занимает RAM/CPU контейнерами, но библиотека остаётся на диске.
 
-## Перенос на другой сервер
+## Безопасное удаление edge-ноды
 
-Рекомендуемый вариант:
+Edge имеет отдельный scoped helper и не использует control uninstaller:
+
+```bash
+./scripts/uninstall-edge.sh --dry-run
+./scripts/uninstall-edge.sh
+```
+
+Он:
+
+- работает только с `docker-compose.edge.yml` текущего checkout;
+- не трогает host Nginx;
+- не трогает control/origin;
+- не трогает другие Docker projects/networks/containers;
+- не выполняет global prune;
+- по умолчанию сохраняет локальную реплику ROM/BIOS/artwork/runtime.
+
+После того как edge удалён из LB/CDN и активные соединения drained, можно полностью убрать локальную реплику данных:
+
+```bash
+./scripts/uninstall-edge.sh --purge-replica-data
+```
+
+Перед этим убедитесь, что control/origin или другой backup действительно содержит актуальную библиотеку.
+
+## Перенос control/single-node на другой сервер
 
 ```bash
 sudo ./scripts/uninstall.sh \
@@ -59,21 +76,21 @@ sudo ./scripts/uninstall.sh \
 - удаление скачанного EmulatorJS runtime;
 - удаление только локально собранного backend image, если он больше не используется никаким контейнером.
 
-Архив имеет вид:
+Архив:
 
 ```text
 /root/retro-portal-backups/retro-portal-YYYYMMDD-HHMMSS.tar.gz
 /root/retro-portal-backups/retro-portal-YYYYMMDD-HHMMSS.tar.gz.sha256
 ```
 
-Проверьте checksum перед переносом:
+Проверка:
 
 ```bash
 cd /root/retro-portal-backups
 sha256sum -c retro-portal-*.tar.gz.sha256
 ```
 
-> Backup может содержать `.env` и `catalog/admin-token`. Относитесь к нему как к секретному файлу и не публикуйте его.
+> Backup может содержать `.env` и `catalog/admin-token`. Относитесь к нему как к секретному файлу.
 
 ## Восстановление на новой машине
 
@@ -82,30 +99,23 @@ git clone https://github.com/indie-master/retro-portal.git
 cd retro-portal
 sudo tar -xzf /path/retro-portal-YYYYMMDD-HHMMSS.tar.gz -C .
 ./scripts/install-emulatorjs.sh 4.2.3
-```
-
-Далее выберите нужный сценарий установки:
-
-```bash
 sudo ./scripts/install.sh --mode existing --domain arcade.example.com
 ```
 
-или только Compose:
+Или Compose-only:
 
 ```bash
 docker compose build --pull
 docker compose up -d
 ```
 
-После восстановления проверьте владельца файлов и доступ контейнера к bind mounts:
+После восстановления проверьте владельца файлов:
 
 ```bash
 ls -la catalog games/roms games/bios public/covers/library
 ```
 
 ## Освобождение места без переноса
-
-Удалить библиотеку и runtime можно так:
 
 ```bash
 sudo ./scripts/uninstall.sh \
@@ -115,41 +125,26 @@ sudo ./scripts/uninstall.sh \
   --remove-images
 ```
 
-`--purge-data` всегда сначала создаёт и проверяет backup. Без успешного backup удаление данных не начинается.
+`--purge-data` всегда сначала создаёт и проверяет backup.
 
-## Что скрипт принципиально НЕ удаляет
+## Что скрипты принципиально НЕ удаляют
 
-Даже в режиме `--move` скрипт не трогает:
+Control uninstaller и edge helper не выполняют:
 
-- другие Docker-контейнеры;
-- чужие Compose-проекты;
-- Docker volumes других приложений;
-- Docker networks других приложений;
-- Docker Engine;
-- Nginx;
-- Certbot;
-- TLS-сертификаты;
-- Certbot renewal configuration;
-- общий `nginx:alpine` image;
-- произвольные Nginx-конфиги;
-- существующие `stream` / `ssl_preread` map-блоки;
-- директорию самого git-репозитория.
-
-Скрипт **никогда** не выполняет `docker system prune`, `docker volume prune`, `docker network prune` или глобальное удаление пакетов.
-
-Это сделано специально, чтобы удаление Retro Portal на сервере с другими сервисами не могло случайно снести соседние приложения.
+- удаление чужих Docker-контейнеров/Compose-проектов;
+- Docker volume/network/image prune;
+- удаление Docker Engine;
+- удаление Nginx/Certbot;
+- удаление TLS-сертификатов;
+- глобальное удаление пакетов;
+- автоматическое редактирование произвольных shared `stream` / `ssl_preread` map;
+- удаление git checkout целиком.
 
 ## Сложный существующий Nginx
 
-Если портал подключался в существующий `server {}` или `stream {}` вручную, uninstaller не редактирует такой файл автоматически.
+Если портал подключался в существующий `server {}` или `stream {}` вручную, control uninstaller не редактирует такой файл автоматически. После удаления он показывает оставшиеся упоминания домена.
 
-После штатного удаления он ищет оставшиеся упоминания домена в `/etc/nginx/*.conf` и показывает предупреждение. Например, может остаться ваша ручная строка SNI map:
-
-```nginx
-arcade.example.com  127.0.0.1:8443;
-```
-
-Её нужно удалить вручную только после проверки конкретного файла:
+Проверка:
 
 ```bash
 sudo nginx -T | grep -n 'arcade.example.com'
@@ -157,7 +152,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Это единственный намеренно неавтоматизированный участок: произвольный `stream`-map часто обслуживает несколько сервисов, поэтому безопаснее не переписывать его автоматически.
+Это намеренно: shared SNI/stream map может обслуживать несколько сервисов.
 
 ## Rollback Nginx
 
@@ -167,26 +162,30 @@ sudo systemctl reload nginx
 /var/backups/retro-portal/uninstall-YYYYMMDD-HHMMSS/
 ```
 
-Если `nginx -t` или reload завершается ошибкой, uninstaller автоматически восстанавливает предыдущий vhost и прекращает удаление до остановки контейнеров и очистки данных.
+Если `nginx -t` или reload завершается ошибкой, предыдущий vhost автоматически восстанавливается, а удаление прекращается до остановки контейнеров и очистки данных.
 
 ## Репозиторий после удаления
 
-Каталог git-репозитория намеренно не удаляется автоматически. Это дополнительная защита от ошибки пути в `rm -rf`.
-
-После `--move` или `--purge-data --remove-runtime` там остаются в основном код и документация, занимающие сравнительно мало места. Если вы уверены, что backup скопирован на другой носитель и больше ничего из каталога не нужно, сам git checkout можно удалить отдельно уже после проверки переноса.
+Git checkout намеренно не удаляется автоматически. Это дополнительная защита от ошибки пути в `rm -rf`.
 
 ## Быстрая памятка
 
 ```bash
-# Только посмотреть план
+# control/single-node: только план
 sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
 
-# Отключить портал, но сохранить библиотеку
+# control/single-node: отключить, сохранив библиотеку
 sudo ./scripts/uninstall.sh --domain arcade.example.com
 
-# Перенос на другую машину
+# control/single-node: перенос
 sudo ./scripts/uninstall.sh --domain arcade.example.com --move --backup-dir /root/retro-portal-backups
 
-# Полностью освободить почти всё занятое порталoм дисковое место, сохранив backup
-sudo ./scripts/uninstall.sh --domain arcade.example.com --purge-data --remove-runtime --remove-images
+# edge: только план
+./scripts/uninstall-edge.sh --dry-run
+
+# edge: убрать контейнеры, сохранить replica data
+./scripts/uninstall-edge.sh
+
+# edge: убрать и replica data
+./scripts/uninstall-edge.sh --purge-replica-data
 ```
