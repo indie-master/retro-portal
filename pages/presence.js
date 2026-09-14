@@ -1,1 +1,11 @@
-document.addEventListener('DOMContentLoaded',()=>{const c=document.querySelector('#connection'),d=document.querySelector('#statusDot'),o=document.querySelector('#online'),s=document.querySelector('#onlineStat');if(c)c.textContent='DEMO';if(d)d.classList.add('live');if(o)o.textContent='—';if(s)s.textContent='—'});window.RetroPresence={playing(){},idle(){}};
+document.addEventListener('DOMContentLoaded',()=>{
+  const connection=document.querySelector('#connection');
+  const dot=document.querySelector('#statusDot');
+  const online=document.querySelector('#online');
+  const onlineStat=document.querySelector('#onlineStat');
+  if(connection)connection.textContent='В СЕТИ';
+  if(dot)dot.classList.add('live');
+  if(online)online.textContent='9';
+  if(onlineStat)onlineStat.textContent='9';
+});
+window.RetroPresence={playing(){},idle(){}};
