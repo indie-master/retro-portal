@@ -1,12 +1,12 @@
 # Масштабирование Retro Portal
 
-[← README](../../README.md) · [Установка](INSTALL.md) · [Сеть](NETWORKING.md) · [Безопасность](../../SECURITY.md)
+[← README](../../README.md) · [Установка](INSTALL.md) · [Обновление](UPDATE.md) · [Сеть](NETWORKING.md) · [Безопасность](../../SECURITY.md)
 
-Retro Portal по умолчанию остаётся обычным **single-node** приложением: один сервер, один `docker-compose.yml`, один Nginx/reverse proxy. Для небольшой библиотеки и нескольких игроков это самый простой и предпочтительный вариант.
+Retro Portal по умолчанию остаётся обычным **single-node** приложением: один сервер, один `docker-compose.yml`, один reverse proxy. Для небольшой/средней библиотеки это самый простой и предпочтительный вариант.
 
 Когда основная нагрузка начинает приходиться на раздачу ROM, EmulatorJS runtime, обложек и других статических файлов, проект можно разнести на несколько edge-нод без изменения интерфейса для игрока.
 
-## Рекомендуемая модель scale-out
+## Архитектура scale-out
 
 ```text
                          Internet
@@ -25,37 +25,20 @@ Retro Portal по умолчанию остаётся обычным **single-no
                     backend + admin + stats
 ```
 
-Edge-ноды обслуживают тяжёлый и хорошо кешируемый трафик:
+Edge-ноды обслуживают тяжёлый/cacheable трафик: HTML/CSS/JS, `/roms/`, `/bios/`, `/emulatorjs/`, обложки и screenshots.
 
-- HTML/CSS/JS;
-- `/roms/`;
-- `/bios/`;
-- `/emulatorjs/`;
-- обложки и screenshots.
-
-Динамические endpoint'ы централизованы на control/origin-ноде:
+Динамические endpoint'ы остаются на control/origin:
 
 - `/api/games`;
 - `/api/activity`;
 - `/api/play/*`;
 - `/ws/presence`.
 
-`/admin.html` и `/api/admin/*` на edge-нодах намеренно отключены. Управление библиотекой выполняется только через control/origin.
+`/admin.html` и `/api/admin/*` на edge специально отключены. Поэтому библиотека редактируется только на control/origin, а online/current-game статистика остаётся единой для всего пула.
 
-Такой дизайн распределяет основную полосу и файловый I/O между серверами, но не требует общей базы данных для presence/статистики и не ломает single-node режим.
+## Control / origin
 
-## Что происходит при запуске игры
-
-1. Пользователь попадает на любую здоровую edge-ноду через CDN/LB.
-2. Страница и artwork отдаются локально с edge.
-3. Каталог и activity API edge прозрачно проксирует на control/origin.
-4. WebSocket presence также идёт через edge на один control/origin, поэтому online/current-game счётчики остаются общими для всего пула.
-5. ROM, BIOS и EmulatorJS runtime загружаются с той edge-ноды, на которую попал пользователь.
-6. Сама эмуляция дальше выполняется в браузере пользователя.
-
-## Подготовка control/origin
-
-Control-нода разворачивается обычным способом:
+Control-нода разворачивается как обычная установка:
 
 ```bash
 git clone https://github.com/indie-master/retro-portal.git
@@ -65,23 +48,15 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Или через installer:
+Либо через существующий Nginx:
 
 ```bash
 sudo ./scripts/install.sh --mode existing --domain origin.arcade.example.com
 ```
 
-Для scale-out желательно использовать отдельный origin hostname, например:
+Для edge → origin предпочтительна private VLAN/WireGuard/Tailscale. Через Internet используйте HTTPS и по возможности ограничьте origin firewall'ом по IP edge-нод и административных адресов.
 
-```text
-origin.arcade.example.com
-```
-
-Он нужен edge-нодам для API/WebSocket. Если серверы имеют private VLAN/WireGuard/Tailscale, лучше направлять edge → origin по приватной сети. Если используется Internet, применяйте HTTPS и ограничьте origin firewall'ом по IP edge-нод и административных адресов.
-
-## Подготовка edge-ноды
-
-На каждой edge-ноде:
+## Edge-нода
 
 ```bash
 git clone https://github.com/indie-master/retro-portal.git
@@ -89,7 +64,7 @@ cd retro-portal
 cp .env.edge.example .env.edge
 ```
 
-Укажите control/origin:
+Пример `.env.edge`:
 
 ```ini
 EDGE_BIND_ADDR=127.0.0.1
@@ -101,24 +76,19 @@ EDGE_MEMORY_LIMIT=384m
 EDGE_CPU_LIMIT=1.0
 ```
 
-Установите runtime:
+Запуск:
 
 ```bash
 ./scripts/install-emulatorjs.sh 4.2.3
-```
-
-Запустите edge:
-
-```bash
 docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
 curl -i http://127.0.0.1:8088/healthz
 ```
 
-Edge-контейнер не запускает backend и не хранит admin token. Он обслуживает статические/игровые файлы и проксирует небольшой динамический трафик к origin.
+Edge-контейнер работает unprivileged/read-only, без Linux capabilities и без admin token.
 
-## Синхронизация библиотеки на edge-ноды
+## Синхронизация библиотеки
 
-На control-ноде создайте приватный inventory:
+На control создайте приватный inventory:
 
 ```bash
 cp cluster/nodes.example cluster/nodes.conf
@@ -133,43 +103,40 @@ edge-2|retro@203.0.113.12|/opt/retro-portal
 
 `cluster/nodes.conf` исключён из Git.
 
-Проверка без изменений:
+Dry-run:
 
 ```bash
 ./scripts/cluster-sync.sh --dry-run
 ```
 
-Синхронизация всех edge:
+Все edge:
 
 ```bash
 ./scripts/cluster-sync.sh
 ```
 
-Только одной ноды:
+Одна edge:
 
 ```bash
 ./scripts/cluster-sync.sh --node edge-2
 ```
 
-Скрипт передаёт только:
-
-- `games/roms/`;
-- `games/bios/`;
-- `public/covers/library/`;
-- `public/screenshots/library/`;
-- `emulatorjs/data/` и `emulatorjs/VERSION`.
-
-Он **не передаёт** `.env`, `ADMIN_TOKEN`, mutable catalog, Git credentials и другие секреты.
-
-Для синхронизации используется SSH/rsync с обычной проверкой host key. Пароли и ключи в inventory не хранятся.
+Передаются только ROM, BIOS, user artwork/screenshots и EmulatorJS runtime. `.env`, `ADMIN_TOKEN`, mutable catalog/state и credentials не копируются.
 
 ## Reverse proxy / load balancer
 
-На внешнем балансировщике все пользовательские запросы можно распределять по edge-нодам. Sticky sessions не обязательны: WebSocket и API всё равно централизуются через edge на control/origin.
+Sticky sessions не обязательны: API/WebSocket всё равно возвращаются через edge на control/origin.
 
-Пример Nginx OSS:
+Полный пример лежит в [`examples/nginx-scale-out.conf`](../../examples/nginx-scale-out.conf).
+
+Минимальный Nginx OSS вариант:
 
 ```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 upstream retro_portal_edges {
     least_conn;
     server 10.0.0.11:8088 max_fails=3 fail_timeout=15s;
@@ -194,84 +161,64 @@ server {
         proxy_set_header X-Forwarded-Proto https;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 1h;
     }
 }
 ```
 
-Если балансировщик не поддерживает активные health checks, используйте passive health (`max_fails`/`fail_timeout`) и внешний мониторинг `/healthz`.
+Nginx OSS использует passive health (`max_fails`/`fail_timeout`); внешний мониторинг может опрашивать `/healthz` каждой edge.
 
 ## CDN
 
-CDN можно ставить перед одним сервером или перед edge-пулом.
+CDN можно ставить перед single-node или edge-пулом.
 
-Наиболее выгодно кешировать:
+Удобно кешировать:
 
 - `/emulatorjs/`;
-- `/roms/` — если модель библиотеки допускает кеширование;
+- `/roms/`, если это соответствует вашей модели библиотеки;
 - `/covers/`;
 - `/screenshots/`;
 - CSS/JS/images.
 
-Не кешируйте длительно:
-
-- `/api/`;
-- `/ws/`;
-- `/admin.html`;
-- `/healthz`.
-
-Для WebSocket CDN/LB должен поддерживать Upgrade. Для больших ROM желательно сохранять Range requests.
+Не кешируйте длительно `/api/`, `/ws/`, `/admin.html`, `/healthz`. CDN/LB должен поддерживать WebSocket Upgrade; для больших ROM желательно сохранять Range requests.
 
 ## Обновление control/origin
-
-Безопасный updater:
 
 ```bash
 ./scripts/update.sh --mode standalone
 ```
 
-Он:
+Updater требует чистый Git checkout, выполняет `git pull --ff-only`, rebuild/recreate, проверяет `/healthz` и при неудачном запуске новой версии пытается вернуть предыдущий commit и контейнеры.
 
-1. отказывается работать при изменённом Git working tree;
-2. выполняет `git fetch` + `git pull --ff-only`;
-3. rebuild/recreate контейнеров;
-4. проверяет `/healthz`;
-5. при неуспешном health check откатывает Git на предыдущий commit и пересобирает предыдущую версию.
+## Обновление edge-пула
 
-Если код уже обновлён другим способом:
-
-```bash
-./scripts/update.sh --mode standalone --no-git
-```
-
-## Обновление edge-нод
-
-На одной edge-ноде:
+Одна нода:
 
 ```bash
 ./scripts/update.sh --mode edge
 ```
 
-Для всего пула с control-ноды:
+Все ноды из inventory:
 
 ```bash
 ./scripts/cluster-update.sh --dry-run
 ./scripts/cluster-update.sh
 ```
 
-Рекомендуемый порядок изменения версии:
+Рекомендуемый rolling порядок:
 
 ```text
-1. Обновить control/origin.
-2. Проверить health/API/player.
-3. Обновить одну edge-ноду (canary).
-4. Проверить игру через неё.
-5. Обновить оставшиеся edge-ноды.
-6. Если менялись ROM/artwork/runtime — выполнить cluster-sync.sh.
+1. control/origin
+2. проверка API/player
+3. одна canary edge
+4. проверка запуска игры
+5. остальные edge
+6. cluster-sync.sh, если менялись library payload/runtime
 ```
 
-Такой rolling update позволяет не останавливать весь портал одновременно.
+Подробно: [UPDATE.md](UPDATE.md).
 
-## Добавление новой edge-ноды
+## Добавление edge
 
 1. Clone repo.
 2. Создать `.env.edge`.
@@ -280,37 +227,37 @@ CDN можно ставить перед одним сервером или пе
 5. Добавить ноду в `cluster/nodes.conf`.
 6. Выполнить `cluster-sync.sh --node <name>`.
 7. Проверить `/healthz`.
-8. Только после этого добавить ноду в CDN/load balancer pool.
+8. Добавить edge в LB/CDN pool.
 
-## Удаление edge-ноды из пула
+## Удаление edge
 
-Сначала удалите/disable ноду в LB/CDN и дождитесь завершения активных соединений. Затем:
+Сначала drain/remove edge в LB/CDN, затем:
 
 ```bash
-docker compose --env-file .env.edge -f docker-compose.edge.yml down
+./scripts/uninstall-edge.sh --dry-run
+./scripts/uninstall-edge.sh
 ```
 
-Это не влияет на control/origin и другие edge-ноды.
+Для удаления локальной реплики ROM/runtime:
 
-## Что остаётся single point of truth
+```bash
+./scripts/uninstall-edge.sh --purge-replica-data
+```
 
-В текущей scale-out модели control/origin остаётся единственным writer'ом для:
+## Single point of truth
 
-- Library Manager;
-- mutable catalog;
-- launch statistics;
-- online presence.
+Control/origin остаётся единственным writer'ом для Library Manager, mutable catalog, launch statistics и online presence. Это сознательно упрощает consistency и переносит на edge именно тяжёлую полосу/I/O.
 
-Это осознанно: тяжёлая полоса распределяется, а маленький stateful слой остаётся простым и согласованным. Если когда-нибудь понадобится HA именно для backend/control plane, следующий шаг — вынести state в shared database/Redis/object storage. Для обычной игровой библиотеки это чаще всего не требуется.
+Если когда-нибудь понадобится HA именно для backend/control plane, следующий архитектурный шаг — shared database/Redis/object storage, а не файловая репликация mutable state.
 
-## Безопасность scale-out
+## Security checklist
 
-- не размещайте `ADMIN_TOKEN` на edge-нодах;
-- не копируйте `.env` с control на edge;
-- ограничьте origin firewall'ом/private network, когда это возможно;
-- используйте HTTPS edge → origin через Internet;
-- не отключайте TLS verification на edge;
-- используйте SSH keys + host key checking для `cluster-sync.sh`/`cluster-update.sh`;
-- держите `cluster/nodes.conf` вне Git;
-- используйте отдельный admin hostname/IP allowlist/VPN для Library Manager на крупных установках;
-- сначала обновляйте одну edge-ноду как canary.
+- не копируйте `.env`/`ADMIN_TOKEN` на edge;
+- используйте private network или HTTPS с валидным сертификатом edge → origin;
+- не отключайте TLS verification;
+- ограничьте origin firewall'ом, когда возможно;
+- `cluster/nodes.conf` держите вне Git;
+- используйте SSH keys и host-key verification;
+- admin лучше вынести на отдельный hostname/private management path;
+- сначала обновляйте canary edge;
+- перед удалением edge сначала drain из LB/CDN.
