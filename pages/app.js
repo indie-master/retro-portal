@@ -15,7 +15,6 @@ let demoPresence={};
 const ORDER=['Все','Mega Drive','Demo','На двоих'];
 const esc=(v='')=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const multi=g=>(g.tags||[]).includes('multiplayer')||/2|3|4/.test(g.players||'');
-const systemClass=s=>(s||'retro').toLowerCase().replace(/[^a-z0-9]+/g,'-');
 
 function matches(g){
   if(query&&!([g.title,g.system,g.description,g.history,g.year,...(g.tags||[])].join(' ').toLowerCase().includes(query.toLowerCase())))return false;
@@ -29,7 +28,7 @@ function card(g){
   const cover=g.cover?`<img src="${esc(g.cover)}" alt="Обложка ${esc(g.title)}" loading="lazy" onerror="this.remove()">`:'';
   const desc=g.description?`<span class="card-story">${esc(g.description.slice(0,120))}${g.description.length>120?'…':''}</span>`:'';
   const viewers=demoPresence[g.id]||0;
-  return `<article class="game-card ready demo-card"><div class="cover-wrap"><div class="cover-fallback system-${systemClass(g.system)}"><span>${esc(g.system)}</span><strong>${esc(g.title)}</strong><em>${esc(g.year||'RETRO')}</em></div><div class="cover-art">${cover}</div><div class="cover-shade"></div><span class="platform-badge">DEMO</span>${viewers?`<span class="playing-badge">● ${viewers} играет</span>`:''}</div><div class="game-card-body"><h4>${esc(g.title)}</h4><p>${esc(g.year||'')}${g.players?` · ${esc(g.players)}`:''}</p>${desc}<div class="tags">${(g.tags||[]).filter(t=>t!=='homebrew').slice(0,2).map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="card-action"><a class="play-button" href="game.html?id=${encodeURIComponent(g.id)}">▶ ИГРАТЬ</a></div></div></article>`;
+  return `<article class="game-card ready demo-card"><div class="cover-wrap"><div class="cover-art">${cover}</div><div class="cover-shade"></div><span class="platform-badge">DEMO</span>${viewers?`<span class="playing-badge">● ${viewers} играет</span>`:''}</div><div class="game-card-body"><h4>${esc(g.title)}</h4><p>${esc(g.year||'')}${g.players?` · ${esc(g.players)}`:''}</p>${desc}<div class="tags">${(g.tags||[]).filter(t=>t!=='homebrew').slice(0,2).map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="card-action"><a class="play-button" href="game.html?id=${encodeURIComponent(g.id)}">▶ ИГРАТЬ</a></div></div></article>`;
 }
 
 function shelf(title,list,id=''){
