@@ -27,13 +27,17 @@ jobs:
           python3 -m json.tool catalog/games.json >/dev/null
           python3 -m json.tool catalog/presets/curated-classics.json >/dev/null
           python3 scripts/catalog-check.py
-      - name: Library manager files
+      - name: Library manager and controls files
         run: |
           test -s public/admin.html
           test -s public/admin.js
           test -s public/admin.css
+          test -s public/controls.js
+          test -s public/styles-controls.css
+          test -s public/styles-activity.css
           test -s docs/ru/LIBRARY.md
           test -s docs/en/LIBRARY.md
+          test -s SECURITY.md
           grep -q 'catalog/admin-token' .gitignore
       - name: Docker Compose
         run: docker compose config >/dev/null
@@ -56,11 +60,13 @@ jobs:
           PGID=$(id -g)
           ADMIN_TOKEN=
           THEGAMESDB_API_KEY=
+          WIKIPEDIA_METADATA=0
+          ALLOW_ZIP_ROMS=0
           MAX_UPLOAD_BYTES=2147483648
           EOF
           docker compose up -d --build
-          trap 'docker compose logs --tail=120 || true; docker compose down -v || true' EXIT
-          for i in $(seq 1 40); do
+          trap 'docker compose logs --tail=160 || true; docker compose down -v || true' EXIT
+          for i in $(seq 1 50); do
             curl -fsS http://127.0.0.1:18088/healthz >/dev/null && break
             sleep 1
           done
@@ -69,17 +75,22 @@ jobs:
           TOKEN="$(cat catalog/admin-token)"
           test "${#TOKEN}" -ge 32
           curl -fsS http://127.0.0.1:18088/api/games > /tmp/public-games.json
+          curl -fsS http://127.0.0.1:18088/api/activity > /tmp/activity.json
           curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18088/api/admin/status > /tmp/admin-status.json
           curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18088/api/admin/games > /tmp/admin-games.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18088/api/admin/status)" = "401"
           python3 - <<'PY'
           import json
           public=json.load(open('/tmp/public-games.json'))['games']
           admin=json.load(open('/tmp/admin-games.json'))['games']
           status=json.load(open('/tmp/admin-status.json'))
+          activity=json.load(open('/tmp/activity.json'))
           assert all(g.get('playable') for g in public), 'public API exposed a non-playable title'
           assert len(admin) >= len(public), 'admin catalog should be at least as large as public catalog'
           assert status.get('ok') is True
-          assert 'systems' in status and 'summary' in status
+          assert 'systems' in status and 'summary' in status and 'security' in status
+          assert activity.get('real') is True
+          assert isinstance(activity.get('popular7d'), list)
           PY
       - name: README local links and required assets
         run: |

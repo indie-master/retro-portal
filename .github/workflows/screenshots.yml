@@ -29,6 +29,8 @@ jobs:
           PGID=$(id -g)
           ADMIN_TOKEN=
           THEGAMESDB_API_KEY=
+          WIKIPEDIA_METADATA=0
+          ALLOW_ZIP_ROMS=0
           MAX_UPLOAD_BYTES=2147483648
           EOF
           docker compose up -d --build
@@ -38,7 +40,9 @@ jobs:
           done
           curl -fSI http://127.0.0.1:8088/ >/dev/null
           curl -fSI http://127.0.0.1:8088/local.html >/dev/null
+          curl -fSI http://127.0.0.1:8088/admin.html >/dev/null
           curl -fsS http://127.0.0.1:8088/api/games >/dev/null
+          test -s catalog/admin-token
       - name: Install Playwright
         run: |
           npm --prefix /tmp/shot init -y
@@ -59,18 +63,26 @@ jobs:
             if (!response || !response.ok()) throw new Error(`${url} returned ${response?.status()}`);
             await page.screenshot({path: process.env.GITHUB_WORKSPACE + '/docs/images/' + out, fullPage:true});
           }
+
+          const adminResponse = await page.goto('http://127.0.0.1:8088/admin.html', {waitUntil:'networkidle'});
+          if (!adminResponse || !adminResponse.ok()) throw new Error(`admin returned ${adminResponse?.status()}`);
+          await page.locator('#adminToken').fill(process.env.RETRO_ADMIN_TOKEN || '');
+          await page.locator('#connectAdmin').click();
+          await page.locator('#adminApp').waitFor({state:'visible', timeout:10000});
+          await page.screenshot({path: process.env.GITHUB_WORKSPACE + '/docs/images/admin.png', fullPage:true});
           await browser.close();
           EOF
-          cd /tmp/shot && node capture.mjs
+          cd /tmp/shot && RETRO_ADMIN_TOKEN="$(cat "$GITHUB_WORKSPACE/catalog/admin-token")" node capture.mjs
       - name: Verify screenshot assets
         run: |
           test -s docs/images/home.png
           test -s docs/images/local-rom.png
+          test -s docs/images/admin.png
       - name: Commit screenshots
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f docs/images/home.png docs/images/local-rom.png
+          git add -f docs/images/home.png docs/images/local-rom.png docs/images/admin.png
           git diff --cached --quiet && exit 0
           git commit -m 'docs: refresh UI screenshots'
           git push

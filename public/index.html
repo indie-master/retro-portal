@@ -21,7 +21,7 @@
   <header class="topbar">
     <div class="shell topbar-inner">
       <a class="brand" href="/" aria-label="Retro Portal — на главную"><svg class="brand-mark"><use href="#i-alien"/></svg><span>RETRO</span><strong>PORTAL</strong></a>
-      <nav class="topnav" aria-label="Навигация"><a href="#library">Библиотека</a><a href="#demo">Попробовать</a><a href="/local.html">Свой ROM</a></nav>
+      <nav class="topnav" aria-label="Навигация"><a href="#library">Библиотека</a><a href="#activity">Сейчас играют</a><a href="/local.html">Свой ROM</a></nav>
       <div class="status" aria-label="Игроки онлайн"><i id="statusDot"></i><span id="connection">В СЕТИ</span><svg><use href="#i-users"/></svg><strong id="online">0</strong><em>ОНЛАЙН</em></div>
     </div>
   </header>
@@ -46,7 +46,7 @@
       <section class="stats-row" aria-label="Статистика портала">
         <article><svg class="stat-icon"><use href="#i-gamepad"/></svg><div><strong id="catalogCount">0</strong><small>ИГР В БИБЛИОТЕКЕ</small></div></article>
         <article><svg class="stat-icon"><use href="#i-save"/></svg><div><strong id="availableCount">0</strong><small>ГОТОВО К ЗАПУСКУ</small></div></article>
-        <article><svg class="stat-icon"><use href="#i-users"/></svg><div><strong id="onlineStat">0</strong><small>ИГРОКОВ ОНЛАЙН</small></div></article>
+        <article><svg class="stat-icon"><use href="#i-users"/></svg><div><strong id="onlineStat">0</strong><small>РЕАЛЬНЫХ СЕССИЙ ОНЛАЙН</small></div></article>
         <article><svg class="stat-icon"><use href="#i-monitor"/></svg><div><strong>В БРАУЗЕРЕ</strong><small>БЕЗ УСТАНОВКИ КЛИЕНТА</small></div></article>
       </section>
 
@@ -58,8 +58,13 @@
 
       <section class="info-strip" aria-label="Возможности портала">
         <div><svg class="info-icon"><use href="#i-save"/></svg><div><small>СОХРАНЕНИЯ</small><strong>Продолжайте с того же места</strong></div></div>
-        <div><svg class="info-icon"><use href="#i-gamepad"/></svg><div><small>ГЕЙМПАД</small><strong>Поддержка USB / Bluetooth</strong></div></div>
-        <div><svg class="info-icon"><use href="#i-users"/></svg><div><small>В СЕТИ</small><strong>Смотрите, во что играют сейчас</strong></div></div>
+        <div><svg class="info-icon"><use href="#i-gamepad"/></svg><div><small>УПРАВЛЕНИЕ</small><strong>Своя раскладка клавиатуры + геймпад</strong></div></div>
+        <div><svg class="info-icon"><use href="#i-users"/></svg><div><small>ЖИВАЯ АКТИВНОСТЬ</small><strong id="activitySummary">Смотрим, во что играют сейчас</strong></div></div>
+      </section>
+
+      <section id="activity" class="activity-panel">
+        <div class="activity-heading"><div><p class="eyebrow">ЖИВАЯ АКТИВНОСТЬ</p><h2>Во что играют сейчас</h2></div><span id="activityMode">РЕАЛЬНЫЕ ДАННЫЕ</span></div>
+        <div id="activityList" class="activity-list"><div class="loading-card">Собираем активность…</div></div>
       </section>
     </div>
   </main>

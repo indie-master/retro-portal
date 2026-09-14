@@ -7,94 +7,116 @@
   &nbsp;·&nbsp; <a href="README.md">Русский</a>
   &nbsp;·&nbsp; <a href="docs/en/INSTALL.md">Install</a>
   &nbsp;·&nbsp; <a href="docs/en/LIBRARY.md">Library Manager</a>
-  &nbsp;·&nbsp; <a href="docs/en/NGINX.md">Nginx / TLS</a>
+  &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-d99a47"></a>
+  <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
+  <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
+  <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.0-71cde2"></a>
+  <a href="SECURITY.md"><img alt="Security" src="https://img.shields.io/badge/security-hardened-7ddc78"></a>
 </p>
 
 ![Retro Portal home](docs/images/home.png)
 
-### Local ROM player
-
-![Local ROM Player](docs/images/local-rom.png)
-
-## How it works
-
-Retro Portal separates the **player-facing library** from **collection management**.
+## Architecture
 
 ```text
 Player
   ↓
-/                     → only games that are ready to play
-/game.html?id=...      → browser emulator
-/local.html            → user's own local ROM; never uploaded
+/                     → only titles that are ready to play
+/game.html?id=...      → emulator + portal keyboard layer
+/local.html            → local user ROM; never uploaded
 
-Server owner
+Owner
   ↓
-/admin.html             → ROMs, BIOS files, scanning and metadata
+/admin.html             → ROMs, BIOS, cards, metadata review, publishing
 ```
 
-The public page never asks a visitor for a BIOS, ROM path or server setup. A title appears in the library only after its required files and runtime are ready.
+The public portal never exposes missing-ROM or BIOS diagnostics. A title appears only after the required runtime files are ready.
 
-Emulation runs on the player's device, so the server does not need a GPU.
+## 0.8.0 highlights
 
-## Library Manager
+- portal-native keyboard configuration on top of EmulatorJS `EJS_defaultControls`;
+- per-game or per-platform keyboard profiles;
+- real online presence deduplicated by browser session ID;
+- real "playing now" and 7-day popularity based on actual launches;
+- automatic game description/history proposals;
+- metadata review workflow: **Approve / Reject** before publication;
+- title, story, history, featured and visibility management from `/admin.html`;
+- hardened ROM/BIOS upload path with extension allowlists, limits and safe stored filenames;
+- ZIP browser uploads disabled by default;
+- metadata cover downloads restricted to trusted provider hosts;
+- non-root/read-only backend container, dropped Linux capabilities and `no-new-privileges`;
+- CSP, anti-clickjacking headers and API rate limits.
 
-After installation open:
+## Keyboard controls
+
+Retro Portal uses EmulatorJS' supported custom control mapping and adds a simple UI. Open any game and press **Keyboard** to change a binding. Profiles can be saved for one title or the entire platform.
+
+Default desktop layout:
 
 ```text
-https://your-domain/admin.html
+Arrow keys   movement
+Z / X        primary actions
+A / S / D    extra buttons
+Q / W        shoulder buttons
+Enter        Start
+Shift        Select / Mode
 ```
 
-If `ADMIN_TOKEN` was not configured in `.env`, the backend creates a random token on first start:
+Official EmulatorJS control mapping docs: https://emulatorjs.org/docs4devs/control-mapping/
+
+## Real activity, not fake social proof
+
+The self-hosted online counter is based on live WebSocket sessions. Multiple tabs in the same browser share one local presence ID, so they do not inflate the counter.
+
+Retro Portal does not fabricate popularity. When nobody is playing, the UI says so. After real launches, the backend persists launch events and builds a 7-day popularity list. GitHub Pages clearly labels backend-less activity as demo mode.
+
+## Metadata review
+
+With `THEGAMESDB_API_KEY` configured, the backend can propose title/year/player count/overview/box art. Wikipedia's public API can optionally provide a short historical context paragraph.
+
+```ini
+THEGAMESDB_API_KEY=your-key
+WIKIPEDIA_METADATA=1
+```
+
+External text is sanitized and length-limited. It is stored as `pendingMetadata` and is not published until the owner approves it in `/admin.html`.
+
+## Security
+
+Only the owner/admin can upload ROMs or BIOS files to the server. The public **Local ROM** page keeps user-selected files inside the browser.
+
+Server-side hardening includes:
+
+- platform-specific extension allowlists;
+- upload size limits;
+- SHA-256-based stored names;
+- signature validation where a reliable format signature exists;
+- no browser upload for multi-file CUE/GDI images;
+- ZIP upload disabled by default;
+- known PS1 BIOS hash recognition;
+- ROM files are never executed by the backend;
+- metadata URLs are not user-controlled;
+- admin brute-force throttling;
+- hardened Docker containers and HTTP security headers.
+
+No internet-facing application can honestly be guaranteed "unhackable". Retro Portal uses defense in depth and documents remaining trust boundaries in [SECURITY.md](SECURITY.md).
+
+## Quick start
 
 ```bash
-cat catalog/admin-token
+sudo apt update
+sudo apt install -y git
+git clone https://github.com/indie-master/retro-portal.git
+cd retro-portal
+sudo ./scripts/install.sh
 ```
 
-The owner can then:
-
-- upload a ROM from the browser;
-- copy large collections over SCP/SFTP and scan folders;
-- automatically create/update catalog cards;
-- see exactly which BIOS file a system requires;
-- upload BIOS files from the owner panel;
-- use curated local metadata when a known title is detected;
-- automatically enrich title/year/description/player count/box art through TheGamesDB when it is configured.
-
-See **[docs/en/LIBRARY.md](docs/en/LIBRARY.md)**.
-
-## Public library behavior
-
-Only playable games are returned by the public catalog API. Missing ROMs and BIOS diagnostics stay in `/admin.html`.
-
-The separate `/local.html` page remains available for visitors who want to launch their own ROM locally. Their selected file is passed directly to EmulatorJS using a browser object URL and is not uploaded to the server.
-
-## Highlights
-
-- warm CRT-inspired UI with subtle 8-bit details;
-- platform shelves and search;
-- player-facing catalog contains only ready titles;
-- protected owner-only Library Manager;
-- automatic ROM registration after upload or folder scan;
-- BIOS dependency diagnostics;
-- curated presets for selected Mega Drive / PlayStation / Dreamcast titles;
-- automatic metadata and box-art enrichment when a provider is configured;
-- local ROM player;
-- self-hosted EmulatorJS `4.2.3` in normal installs;
-- fullscreen and Browser Gamepad API;
-- browser-side saves and save states;
-- online/playing presence;
-- Docker Compose;
-- interactive installation for clean servers and existing Nginx deployments;
-- safe support for `stream :443 + ssl_preread`, PROXY protocol and internal TLS vhosts;
-- wildcard/SAN certificate reuse, Let's Encrypt HTTP-01 and Cloudflare DNS-01;
-- mandatory `nginx -t` before reload;
-- GitHub Pages playable demo.
-
-## Live Demo
-
-**https://indie-master.github.io/retro-portal/**
-
-The GitHub Pages build displays only demo/homebrew games that are actually playable. Commercial ROMs, BIOS files and official artwork are not included in the public repository or demo.
+See [docs/en/INSTALL.md](docs/en/INSTALL.md) and [docs/en/LIBRARY.md](docs/en/LIBRARY.md).
 
 ## Requirements
 
@@ -107,61 +129,18 @@ The GitHub Pages build displays only demo/homebrew games that are actually playa
 | Network | 100 Mbps | 1 Gbps |
 | GPU | not required | not required |
 
-## Quick start
+Emulation runs on the player's device, so the server does not need a GPU.
 
-```bash
-sudo apt update
-sudo apt install -y git
-git clone https://github.com/indie-master/retro-portal.git
-cd retro-portal
-sudo ./scripts/install.sh
-```
+## Upstream components
 
-The installer offers four modes:
+- EmulatorJS: https://emulatorjs.org/
+- Docker Engine: https://docs.docker.com/engine/
+- Nginx: https://nginx.org/
+- TheGamesDB: https://thegamesdb.net/
+- MediaWiki API: https://www.mediawiki.org/wiki/API:Main_page
 
-```text
-1) Full automatic setup
-2) Existing Nginx integration
-3) Manual integration — app + generated snippets
-4) Local test without a domain or TLS
-```
-
-See [docs/en/INSTALL.md](docs/en/INSTALL.md).
-
-## Curated presets
-
-Metadata presets are included for:
-
-**Mega Drive:** Sonic the Hedgehog 2, Mortal Kombat II, Streets of Rage 2, Comix Zone, Road Rash III, Contra: Hard Corps.
-
-**PlayStation:** Tekken 3, Crash Bandicoot 3: Warped, Crash Team Racing, Tony Hawk's Pro Skater 2, Resident Evil 2, Worms Armageddon.
-
-**Dreamcast — experimental:** Crazy Taxi, Soulcalibur, Sonic Adventure, Jet Set Radio.
-
-These are metadata presets, not ROMs. When the owner supplies a matching image, the Library Manager can use the prepared metadata.
-
-## Automatic artwork
-
-Set a TheGamesDB API key on the backend:
-
-```ini
-THEGAMESDB_API_KEY=your-api-key
-```
-
-The key is server-side only. After this is configured, a ROM uploaded through Library Manager automatically triggers metadata/box-art enrichment. If the provider cannot find a match, the imported ROM remains available with its local preset/fallback card and enrichment can be retried later.
-
-## Nginx / TLS
-
-The installer inspects `nginx -T` before changing a live configuration, supports conventional HTTPS vhosts and `stream :443 + ssl_preread`, and always runs `nginx -t` before reload. See [docs/en/NGINX.md](docs/en/NGINX.md).
-
-## Dreamcast
-
-Catalog and multi-file BIOS checks are ready, but Flycast WASM remains intentionally marked experimental. See [docs/en/DREAMCAST.md](docs/en/DREAMCAST.md).
-
-## Legal
-
-Retro Portal is software only. The repository does not distribute commercial ROMs, BIOS files or official artwork. The server owner is responsible for the content they add.
+See [THIRD_PARTY.md](THIRD_PARTY.md) for third-party licensing.
 
 ## License
 
-Retro Portal code is MIT licensed. Third-party components retain their own licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).
+Retro Portal is released under the [MIT License](LICENSE).
