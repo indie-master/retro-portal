@@ -21,7 +21,10 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p _site/roms _site/covers _site/assets _site/screenshots
-          cp public/index.html public/game.html public/local.html public/styles.css public/styles-base.css public/styles-library.css public/styles-local.css public/styles-responsive.css public/styles-art.css public/styles-v060.css _site/
+          cp public/index.html public/game.html public/local.html \
+             public/styles.css public/styles-base.css public/styles-library.css public/styles-local.css \
+             public/styles-responsive.css public/styles-art.css public/styles-v060.css \
+             public/styles-controls.css public/styles-activity.css public/controls.js _site/
           cp -a public/covers/. _site/covers/
           cp -a public/assets/. _site/assets/
           if [ -d public/screenshots ]; then cp -a public/screenshots/. _site/screenshots/; fi
@@ -61,9 +64,21 @@ jobs:
           cat > _site/README.txt <<'EOF'
           Retro Portal GitHub Pages demo.
           Only games that are actually playable in the public demo are displayed.
-          The six included ROMs are MIT-licensed homebrew titles.
+          The included demo ROMs are redistributable homebrew titles.
           EmulatorJS runtime is loaded from the official stable CDN only in the GitHub Pages build.
+          Online/activity statistics are intentionally disabled in Pages and clearly labeled as demo-only.
           EOF
+      - name: Validate static demo assets
+        run: |
+          test -s _site/index.html
+          test -s _site/game.html
+          test -s _site/controls.js
+          test -s _site/styles-controls.css
+          test -s _site/styles-activity.css
+          test -s _site/catalog.json
+          node --check _site/app.js
+          node --check _site/game.js
+          node --check _site/controls.js
       - name: Publish gh-pages branch
         run: |
           cd _site
