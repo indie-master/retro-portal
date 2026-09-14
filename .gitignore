@@ -3,9 +3,12 @@
 !.env.example
 !.env.edge.example
 
-# Runtime secrets and mutable catalog
+# Runtime secrets and mutable catalog/state
 catalog/admin-token
 catalog/runtime-games.json
+catalog/stats.json
+catalog/activity.json
+catalog/metadata-proposals.json
 
 # Private scale-out inventory (may contain real hostnames/IPs)
 cluster/nodes.conf
