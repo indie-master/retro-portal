@@ -7,6 +7,7 @@
   &nbsp;·&nbsp; <a href="README.md">Русский</a>
   &nbsp;·&nbsp; <a href="docs/en/INSTALL.md">Install</a>
   &nbsp;·&nbsp; <a href="docs/en/LIBRARY.md">Library Manager</a>
+  &nbsp;·&nbsp; <a href="docs/en/NETWORKING.md">Networking</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
 </p>
 
@@ -50,13 +51,20 @@ The public portal never exposes missing-ROM or BIOS diagnostics. A title appears
 - ZIP browser uploads disabled by default;
 - metadata cover downloads restricted to trusted provider hosts;
 - non-root/read-only backend container, dropped Linux capabilities and `no-new-privileges`;
-- CSP, anti-clickjacking headers and API rate limits.
+- CSP, anti-clickjacking headers and API rate limits;
+- documented actual network behavior for provider/CDN support: [docs/en/NETWORKING.md](docs/en/NETWORKING.md).
+
+## Library Manager
+
+The owner dashboard is available at `/admin.html` and handles ROM/BIOS uploads, dependency checks, scanning, card editing and metadata approval without routine console access.
+
+![Retro Portal Library Manager](docs/images/admin.png)
+
+See [docs/en/LIBRARY.md](docs/en/LIBRARY.md).
 
 ## Keyboard controls
 
 Retro Portal uses EmulatorJS' supported custom control mapping and adds a simple UI. Open any game and press **Keyboard** to change a binding. Profiles can be saved for one title or the entire platform.
-
-Default desktop layout:
 
 ```text
 Arrow keys   movement
@@ -90,23 +98,13 @@ External text is sanitized and length-limited. It is stored as `pendingMetadata`
 
 Only the owner/admin can upload ROMs or BIOS files to the server. The public **Local ROM** page keeps user-selected files inside the browser.
 
-Server-side hardening includes:
+Server-side hardening includes platform-specific extension allowlists, upload limits, SHA-256-based stored names, format-signature checks where reliable, ZIP disabled by default, metadata URL restrictions, brute-force throttling, hardened containers and HTTP security headers. `npm audit --audit-level=high`, CodeQL and Dependabot are part of the repository security workflow.
 
-- platform-specific extension allowlists;
-- upload size limits;
-- SHA-256-based stored names;
-- signature validation where a reliable format signature exists;
-- no browser upload for multi-file CUE/GDI images;
-- ZIP upload disabled by default;
-- known PS1 BIOS hash recognition;
-- ROM files are never executed by the backend;
-- metadata URLs are not user-controlled;
-- admin brute-force throttling;
-- hardened Docker containers and HTTP security headers.
+No internet-facing application can honestly be guaranteed "unhackable". See the complete threat model in [SECURITY.md](SECURITY.md).
 
-No internet-facing application can honestly be guaranteed "unhackable". Retro Portal uses defense in depth and documents remaining trust boundaries in [SECURITY.md](SECURITY.md).
+## Installation
 
-## Quick start
+### Interactive installer
 
 ```bash
 sudo apt update
@@ -116,7 +114,25 @@ cd retro-portal
 sudo ./scripts/install.sh
 ```
 
-See [docs/en/INSTALL.md](docs/en/INSTALL.md) and [docs/en/LIBRARY.md](docs/en/LIBRARY.md).
+### Docker Compose only
+
+```bash
+git clone https://github.com/indie-master/retro-portal.git
+cd retro-portal
+cp .env.example .env
+./scripts/install-emulatorjs.sh 4.2.3
+docker compose build --pull
+docker compose up -d
+curl -i http://127.0.0.1:8088/healthz
+```
+
+Keep the app on `127.0.0.1:8088` where possible and publish it through your host reverse proxy. Existing-Nginx and manual-snippet modes are also supported.
+
+See [docs/en/INSTALL.md](docs/en/INSTALL.md).
+
+## Actual network behavior
+
+The production portal uses ordinary HTTPS, JS/WASM/ROM downloads, short JSON APIs and one real long-lived `/ws/presence` WebSocket for online/current-game presence. It does **not** generate Xray XHTTP, arbitrary raw TCP or native gRPC traffic. See [docs/en/NETWORKING.md](docs/en/NETWORKING.md) for a provider-facing reference.
 
 ## Requirements
 
@@ -140,6 +156,12 @@ Emulation runs on the player's device, so the server does not need a GPU.
 - MediaWiki API: https://www.mediawiki.org/wiki/API:Main_page
 
 See [THIRD_PARTY.md](THIRD_PARTY.md) for third-party licensing.
+
+## Live Demo
+
+https://indie-master.github.io/retro-portal/
+
+Only redistributable demo/homebrew ROMs are included in the public demo.
 
 ## License
 
