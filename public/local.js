@@ -42,7 +42,7 @@ launch.addEventListener('click', () => {
   window.RetroPresence?.playing(`local:${core.value}`);
   const script = document.createElement('script');
   script.src = '/emulatorjs/data/loader.js';
-  script.onerror = () => alert('Эмулятор не установлен на сервере. Запустите ./scripts/install-emulatorjs.sh.');
+  script.onerror = () => alert('Не удалось загрузить EmulatorJS runtime. Проверьте доступность /emulatorjs/data/loader.js на сервере.');
   document.body.appendChild(script);
 });
 
