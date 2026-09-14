@@ -1,8 +1,8 @@
 # Networking and reverse proxy
 
-[← README](../../README_EN.md) · [Install](INSTALL.md) · [Nginx/TLS](NGINX.md) · [Security](../../SECURITY.md)
+[← README](../../README_EN.md) · [Install](INSTALL.md) · [Scaling](SCALING.md) · [Nginx/TLS](NGINX.md) · [Security](../../SECURITY.md)
 
-This document describes Retro Portal's network architecture, main endpoints, and a recommended production publishing layout.
+This document describes Retro Portal's network architecture, main endpoints and production publishing layouts.
 
 ## Main endpoints
 
@@ -10,26 +10,18 @@ This document describes Retro Portal's network architecture, main endpoints, and
 |---|---|---|
 | `/`, `/game.html`, `/local.html` | portal UI | normal HTTPS |
 | `/emulatorjs/` | EmulatorJS JS/WASM/cores | HTTPS, cache-friendly |
-| `/roms/` | ROM delivery for prepared games | HTTPS download |
-| `/bios/` | BIOS delivery for browser cores | HTTPS download |
+| `/roms/` | ROM delivery | HTTPS download / Range |
+| `/bios/` | BIOS delivery | HTTPS download |
 | `/api/games` | public catalog | short JSON requests |
-| `/api/activity` | online/activity statistics | short JSON requests |
-| `/ws/presence` | presence and current game | long-lived WebSocket |
-| `/api/admin/*` | Library Manager | HTTPS, authenticated |
+| `/api/activity` | online/activity data | short JSON requests |
+| `/api/play/*` | game-launch event | short POST |
+| `/ws/presence` | presence/current game | long-lived WebSocket |
+| `/api/admin/*` | Library Manager | authenticated HTTPS |
 | `/healthz` | health check | short HTTP/HTTPS request |
 
-After runtime and ROM delivery, emulation runs on the player's device. The server mainly serves web/assets, stores catalog/statistics data, and maintains presence sessions.
+After runtime and ROM delivery, emulation runs on the player's device. The server primarily serves assets, stores catalog/statistics and maintains presence sessions.
 
-## Typical session
-
-1. The browser loads HTML, CSS, JavaScript, and artwork.
-2. `/ws/presence` opens.
-3. Starting a game downloads the required EmulatorJS core/runtime, ROM, and optional BIOS.
-4. Emulation continues locally in the browser.
-5. The presence WebSocket carries small `playing`, `idle`, heartbeat, and online-update events.
-6. Base save-state/SRAM storage stays in the browser.
-
-## Recommended production layout
+## Single-node production
 
 ```text
 Internet
@@ -41,11 +33,30 @@ Nginx / Caddy / Traefik / CDN
 Retro Portal
 ```
 
-Keep the internal application port bound to `127.0.0.1` where possible and terminate public HTTPS, certificates, and outer security headers at the reverse proxy.
+Keep the internal app port on `127.0.0.1` where possible and terminate public TLS at the host reverse proxy.
+
+## Scale-out production
+
+```text
+Internet
+   ↓
+CDN / Load Balancer
+   ↓
+Edge pool
+   ├─ static / ROM / BIOS / EmulatorJS
+   └─ proxy API + WebSocket
+          ↓
+     Control / Origin
+     backend + admin + stats
+```
+
+Edges serve bandwidth-heavy files locally and proxy `/api/*` and `/ws/*` to control/origin. `/admin.html` and `/api/admin/*` are disabled on edge nodes.
+
+This spreads bandwidth and file I/O while keeping one consistent catalog/presence/statistics source. See [SCALING.md](SCALING.md).
 
 ## WebSocket
 
-The reverse proxy must pass upgrade headers for `/ws/presence`:
+A normal reverse proxy must forward Upgrade headers:
 
 ```nginx
 location /ws/ {
@@ -58,24 +69,36 @@ location /ws/ {
 }
 ```
 
-If WebSocket connectivity is unavailable, online/current-activity widgets will not update, while the library and normal HTTP API remain usable.
+In scale-out mode this proxying is handled by the edge configuration. All edge presence traffic returns to the same control/origin, so online/current-game counters remain global.
 
 ## Caching
 
-Static resources are good candidates for longer caching:
+Good CDN/edge cache targets:
 
 - `/emulatorjs/`;
 - `/assets/`;
 - `/covers/`;
-- `/screenshots/`.
+- `/screenshots/`;
+- `/roms/` when appropriate for your library policy.
 
-Avoid long-lived caches for:
+Avoid long-lived caching for `/api/`, `/ws/`, `/admin.html`, and `/healthz`. Preserve Range requests for large game files.
 
-- `/api/`;
-- `/admin.html`;
-- `/healthz`.
+## Origin connectivity
 
-ROM/BIOS caching depends on how your library is updated. Keep Range request support for large files where possible.
+Prefer a private VLAN/WireGuard/Tailscale path from edges to control/origin. When the public Internet is used:
+
+- use HTTPS;
+- keep TLS certificate verification enabled;
+- restrict origin access by edge IPs/firewall where practical;
+- separate administrative access from the public origin path.
+
+The bundled edge image includes a CA store and verifies HTTPS origin certificates.
+
+## Health checks
+
+Single/control `/healthz` checks the backend. Edge `/healthz` is intentionally local to the edge and does not depend on control/origin, allowing the LB to evaluate edge health separately from control-plane health.
+
+Use `/api/status` or origin `/healthz` to monitor the dynamic control plane.
 
 ## Verification
 
@@ -85,19 +108,15 @@ curl -s https://arcade.example.com/api/games | jq
 curl -s https://arcade.example.com/api/activity | jq
 ```
 
-Test presence with a standard WebSocket client at:
+Presence:
 
 ```text
 wss://arcade.example.com/ws/presence
 ```
 
-The `Origin` header should match the portal hostname.
-
 ## Multiple applications on one host
 
-If one server hosts multiple websites or applications, separate hostnames and upstream/server blocks make TLS, logging, rate limits, updates, and troubleshooting easier.
-
-Example:
+Separate applications by hostname/upstream, especially on a server that already runs other services:
 
 ```text
 arcade.example.com    → Retro Portal
@@ -105,4 +124,4 @@ files.example.com     → another application
 status.example.com    → monitoring
 ```
 
-For an existing complex Nginx setup, use the `existing` or `manual` install mode: [INSTALL.md](INSTALL.md).
+For an existing complex Nginx configuration use the `existing` or `manual` install mode: [INSTALL.md](INSTALL.md).
