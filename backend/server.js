@@ -16,6 +16,7 @@ const THEGAMESDB_API_KEY = String(process.env.THEGAMESDB_API_KEY || '');
 const WIKIPEDIA_METADATA = String(process.env.WIKIPEDIA_METADATA ?? '1') !== '0';
 const ALLOW_ZIP_ROMS = String(process.env.ALLOW_ZIP_ROMS || '0') === '1';
 const MAX_UPLOAD_BYTES = Math.max(1, Number(process.env.MAX_UPLOAD_BYTES || 2 * 1024 * 1024 * 1024));
+const MAX_COVER_BYTES = 8 * 1024 * 1024;
 const MAX_JSON_BYTES = 128 * 1024;
 const MAX_TEXT = 8000;
 const clients = new Map();
@@ -170,6 +171,18 @@ async function readJsonBody(req, limit = MAX_JSON_BYTES) {
   if (!chunks.length) return {};
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
   catch { throw Object.assign(new Error('invalid-json'), { status: 400 }); }
+}
+
+async function readBinaryBody(req, limit, tooLargeError = 'upload-too-large') {
+  let bytes = 0;
+  const chunks = [];
+  for await (const chunk of req) {
+    bytes += chunk.length;
+    if (bytes > limit) throw Object.assign(new Error(tooLargeError), { status: 413 });
+    chunks.push(chunk);
+  }
+  if (!bytes) throw Object.assign(new Error('empty-upload'), { status: 400 });
+  return Buffer.concat(chunks);
 }
 
 async function fileExists(root, value) {
@@ -439,6 +452,7 @@ async function uploadRom(req) {
   const storedName = `${slugify(prettyTitle(originalName))}-${upload.sha256.slice(0, 12)}${ext}`;
   const destination = path.join(ROM_ROOT, system.dir, storedName);
   await fs.rename(tempDestination, destination);
+  await fs.chmod(destination, 0o644);
   const relativeRom = `${system.dir}/${storedName}`;
   const registered = await registerRom(systemKey, relativeRom, originalName, upload.sha256);
   return { upload, originalName, storedName, game: await hydrateGame(registered) };
@@ -468,6 +482,7 @@ async function uploadBios(req) {
   const destination = path.join(BIOS_ROOT, system.dir, canonical);
   await fs.mkdir(path.dirname(destination), { recursive: true });
   await fs.rename(tempPath, destination);
+  await fs.chmod(destination, 0o644);
   return { upload, system: system.label, storedAs: `${system.dir}/${canonical}`, recognized: true };
 }
 
@@ -497,16 +512,48 @@ function validImageSignature(bytes, contentType) {
   return bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[bytes.length - 2] === 0xff && bytes[bytes.length - 1] === 0xd9;
 }
 
+async function uploadCover(req, gameId) {
+  const originalName = safeFileName(req.headers['x-file-name']);
+  if (!originalName) throw Object.assign(new Error('missing-file-name'), { status: 400 });
+  const existing = (await loadCatalog()).find((game) => game.id === gameId);
+  if (!existing) throw Object.assign(new Error('game-not-found'), { status: 404 });
+
+  const rawExt = path.extname(originalName).toLowerCase();
+  const typeByExt = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+  const contentType = typeByExt[rawExt];
+  if (!contentType) throw Object.assign(new Error('cover-unsupported-format'), { status: 415 });
+
+  const bytes = await readBinaryBody(req, MAX_COVER_BYTES, 'cover-too-large');
+  if (!validImageSignature(bytes, contentType)) throw Object.assign(new Error('cover-invalid'), { status: 415 });
+
+  const ext = rawExt === '.jpeg' ? '.jpg' : rawExt;
+  const digest = crypto.createHash('sha256').update(bytes).digest('hex');
+  const file = `${slugify(gameId)}-${digest.slice(0, 10)}${ext}`;
+  const destination = path.join(COVER_ROOT, file);
+  await fs.mkdir(COVER_ROOT, { recursive: true });
+  await fs.writeFile(destination, bytes, { mode: 0o644 });
+  await fs.chmod(destination, 0o644);
+  const cover = `/covers/library/${file}`;
+
+  await mutateCatalog(async (data) => {
+    const game = data.games.find((item) => item.id === gameId);
+    if (!game) throw Object.assign(new Error('game-not-found'), { status: 404 });
+    game.cover = cover;
+  });
+
+  return { cover, bytes: bytes.length, sha256: digest, game: (await getGames()).find((game) => game.id === gameId) };
+}
+
 async function downloadCover(rawUrl, gameId) {
   const url = allowedMetadataUrl(rawUrl);
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(8000), headers: { 'user-agent': 'RetroPortal/0.8 metadata-fetcher' } });
   if (!response.ok) throw new Error(`cover HTTP ${response.status}`);
   const length = Number(response.headers.get('content-length') || 0);
-  if (length > 8 * 1024 * 1024) throw new Error('cover-too-large');
+  if (length > MAX_COVER_BYTES) throw new Error('cover-too-large');
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
   if (!/^image\/(jpeg|png|webp)/.test(contentType)) throw new Error('cover-content-type');
   const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length > 8 * 1024 * 1024 || !validImageSignature(bytes, contentType)) throw new Error('cover-invalid');
+  if (bytes.length > MAX_COVER_BYTES || !validImageSignature(bytes, contentType)) throw new Error('cover-invalid');
   const ext = contentType.includes('png') ? '.png' : contentType.includes('webp') ? '.webp' : '.jpg';
   await fs.mkdir(COVER_ROOT, { recursive: true });
   const file = `${slugify(gameId)}-${crypto.createHash('sha256').update(bytes).digest('hex').slice(0, 10)}${ext}`;
@@ -697,6 +744,10 @@ const server = http.createServer(async (req, res) => {
         return json(res, 201, result);
       }
       if (url.pathname === '/api/admin/upload/bios' && req.method === 'POST') return json(res, 201, await uploadBios(req));
+      if (url.pathname.startsWith('/api/admin/upload/cover/') && req.method === 'POST') {
+        const id = decodeURIComponent(url.pathname.slice('/api/admin/upload/cover/'.length));
+        return json(res, 201, await uploadCover(req, id));
+      }
       if (url.pathname.startsWith('/api/admin/metadata/propose/') && req.method === 'POST') {
         const id = decodeURIComponent(url.pathname.slice('/api/admin/metadata/propose/'.length));
         return json(res, 200, { proposal: await buildMetadataProposal(id) });
