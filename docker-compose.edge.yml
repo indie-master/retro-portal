@@ -14,8 +14,8 @@ services:
     mem_limit: "${EDGE_MEMORY_LIMIT:-384m}"
     cpus: "${EDGE_CPU_LIMIT:-1.0}"
     tmpfs:
-      - /var/cache/nginx:size=128m,mode=0755
-      - /var/run:size=8m,mode=0755
+      - /var/cache/nginx:size=128m,mode=1777
+      - /var/run:size=8m,mode=1777
       - /tmp:size=32m,mode=1777
     environment:
       CONTROL_ORIGIN_SCHEME: "${CONTROL_ORIGIN_SCHEME:-https}"
