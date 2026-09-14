@@ -19,6 +19,7 @@ jobs:
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
           find scripts -type f -name '*.sh' -print0 | xargs -0 shellcheck -x -S error
+          sh -n edge/entrypoint.sh
       - name: JavaScript syntax
         run: |
           for file in backend/*.js public/*.js pages/*.js; do node --check "$file"; done
@@ -27,7 +28,7 @@ jobs:
           python3 -m json.tool catalog/games.json >/dev/null
           python3 -m json.tool catalog/presets/curated-classics.json >/dev/null
           python3 scripts/catalog-check.py
-      - name: Library manager and controls files
+      - name: Library manager, scaling and controls files
         run: |
           test -s public/admin.html
           test -s public/admin.js
@@ -39,14 +40,28 @@ jobs:
           test -s docs/en/LIBRARY.md
           test -s docs/ru/NETWORKING.md
           test -s docs/en/NETWORKING.md
+          test -s docs/ru/SCALING.md
+          test -s docs/en/SCALING.md
+          test -s docs/ru/UPDATE.md
+          test -s docs/en/UPDATE.md
+          test -s docker-compose.edge.yml
+          test -s .env.edge.example
+          test -s cluster/nodes.example
           test -s SECURITY.md
-          grep -q 'catalog/admin-token' .gitignore
+          grep -q '^catalog/admin-token$' .gitignore
+          grep -q '^catalog/runtime-games.json$' .gitignore
+          grep -q '^catalog/stats.json$' .gitignore
+          grep -q '^catalog/activity.json$' .gitignore
+          grep -q '^catalog/metadata-proposals.json$' .gitignore
+          grep -q '^cluster/nodes.conf$' .gitignore
       - name: Public demo copy
         run: |
           grep -q 'renderDemoActivity' pages/app.js
           ! grep -RqiE 'без backend|не рисуем фальшив|фальшивый онлайн|Xray XHTTP|provider-facing|provider/CDN support' README.md README_EN.md CHANGELOG.md docs pages public
       - name: Docker Compose
-        run: docker compose config >/dev/null
+        run: |
+          docker compose config >/dev/null
+          CONTROL_ORIGIN_HOST=example.com docker compose --env-file .env.edge.example -f docker-compose.edge.yml config >/dev/null
       - name: Nginx syntax
         run: |
           docker run --rm \
@@ -57,6 +72,19 @@ jobs:
             -v "$PWD/games/bios:/srv/bios:ro" \
             -v "$PWD/emulatorjs:/srv/emulatorjs:ro" \
             nginx:1.29-alpine nginx -t
+      - name: Edge runtime hardening and health
+        run: |
+          export CONTROL_ORIGIN_HOST=example.com EDGE_PORT=18089 EDGE_BIND_ADDR=127.0.0.1
+          docker compose --env-file .env.edge.example -f docker-compose.edge.yml up -d --build
+          trap 'docker compose --env-file .env.edge.example -f docker-compose.edge.yml logs --tail=120 || true; docker compose --env-file .env.edge.example -f docker-compose.edge.yml down -v || true' EXIT
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:18089/healthz >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:18089/healthz >/dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18089/admin.html)" = "404"
+          docker inspect retro-portal-edge-edge-1 --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{json .HostConfig.CapDrop}}' | tee /tmp/edge-inspect.txt
+          grep -q '^nginx true' /tmp/edge-inspect.txt
       - name: Runtime library manager integration
         run: |
           cat >.env <<EOF

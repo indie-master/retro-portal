@@ -1,16 +1,16 @@
 # Установка Retro Portal
 
-[← README](../../README.md) · [Удаление / перенос](UNINSTALL.md) · [Library Manager](LIBRARY.md) · [Nginx/TLS](NGINX.md) · [Сеть](NETWORKING.md) · [Диагностика](TROUBLESHOOTING.md)
+[← README](../../README.md) · [Масштабирование](SCALING.md) · [Обновление](UPDATE.md) · [Удаление / перенос](UNINSTALL.md) · [Library Manager](LIBRARY.md) · [Nginx/TLS](NGINX.md) · [Сеть](NETWORKING.md)
 
 ## Что понадобится
 
-Рекомендуемый стартовый VPS: Ubuntu 24.04 LTS, 2 vCPU, 2 GB RAM, 40 GB NVMe, 100 Mbps+.
+Рекомендуемый стартовый сервер: Ubuntu 24.04 LTS, 2 vCPU, 2 GB RAM, 40 GB NVMe, 100 Mbps+.
 
-До установки желательно иметь DNS-запись выбранного поддомена, `root`/`sudo` и один из вариантов TLS: уже существующий wildcard/SAN сертификат, Let's Encrypt HTTP-01 или DNS-01.
+Для обычной установки достаточно одной машины. Scale-out через edge-ноды является опциональным и добавляется позднее без переделки single-node инсталляции.
+
+До production-установки желательно иметь DNS-запись выбранного поддомена, `root`/`sudo` и один из вариантов TLS: существующий wildcard/SAN, Let's Encrypt HTTP-01, DNS-01 или свой сертификат.
 
 ## Вариант A — интерактивный installer
-
-Самый простой путь:
 
 ```bash
 sudo apt update
@@ -29,11 +29,13 @@ sudo ./scripts/install.sh --mode existing --domain arcade.example.com
 ./scripts/install.sh --mode local
 ```
 
-В режиме `existing` installer сначала анализирует `nginx -T`, существующие listener'ы, stream/ssl_preread и сертификаты. Перед reload всегда выполняется `nginx -t`.
+В режиме `existing` installer сначала анализирует `nginx -T`, listener'ы, stream/ssl_preread и сертификаты. Перед reload всегда выполняется `nginx -t`.
+
+Для сервера, где уже живут другие приложения, обычно предпочтительны `existing` или `manual`.
 
 ## Вариант B — только Docker Compose
 
-Подходит, если Docker Engine + Compose уже установлены и вы хотите сами управлять reverse proxy/TLS.
+Если Docker Engine + Compose уже установлены и reverse proxy/TLS вы настраиваете сами:
 
 ```bash
 git clone https://github.com/indie-master/retro-portal.git
@@ -42,13 +44,13 @@ cp .env.example .env
 ./scripts/install-emulatorjs.sh 4.2.3
 ```
 
-При необходимости добавьте demo-ROM:
+Опциональные demo-ROM:
 
 ```bash
 ./scripts/install-homebrew-roms.sh
 ```
 
-Проверьте `.env`:
+Основные параметры `.env`:
 
 ```ini
 PORT=8088
@@ -65,9 +67,9 @@ MAX_UPLOAD_BYTES=2147483648
 Запуск:
 
 ```bash
-docker compose pull
+docker compose pull --ignore-buildable
 docker compose build --pull
-docker compose up -d
+docker compose up -d --remove-orphans
 ```
 
 Проверка:
@@ -78,27 +80,54 @@ curl -i http://127.0.0.1:8088/healthz
 curl -s http://127.0.0.1:8088/api/games | jq
 ```
 
-После этого подключите ваш host Nginx/Caddy/Traefik к `127.0.0.1:8088`. Не публикуйте внутренний порт наружу без необходимости.
+После этого подключите host Nginx/Caddy/Traefik к `127.0.0.1:8088`. Не публикуйте внутренний порт наружу без необходимости.
 
-## Вариант C — существующий Nginx без изменений installer'ом
+## Вариант C — существующий Nginx без автоматических правок
 
-Запустите приложение через Compose, затем используйте:
+Запустите приложение через Compose и сгенерируйте snippets:
 
 ```bash
 ./scripts/install.sh --mode manual --domain arcade.example.com
 ```
 
-Installer создаст snippets в `generated/`, но не будет менять активный Nginx. Это удобный вариант для сложных конфигураций, где уже используются `stream`, `ssl_preread`, PROXY protocol или собственная схема сертификатов.
+Installer создаст файлы в `generated/`, но не будет менять активный Nginx. Это подходящий режим для сложной конфигурации с `stream`, `ssl_preread`, PROXY protocol или собственной схемой сертификатов.
+
+## Вариант D — edge-нода для масштабирования
+
+Edge не запускает backend/admin и служит для распределения тяжёлой раздачи ROM/runtime/artwork.
+
+```bash
+git clone https://github.com/indie-master/retro-portal.git
+cd retro-portal
+cp .env.edge.example .env.edge
+```
+
+Настройте origin:
+
+```ini
+EDGE_BIND_ADDR=127.0.0.1
+EDGE_PORT=8088
+CONTROL_ORIGIN_SCHEME=https
+CONTROL_ORIGIN_HOST=origin.arcade.example.com
+CONTROL_ORIGIN_PORT=443
+```
+
+Затем:
+
+```bash
+./scripts/install-emulatorjs.sh 4.2.3
+docker compose --env-file .env.edge -f docker-compose.edge.yml up -d --build
+curl -i http://127.0.0.1:8088/healthz
+```
+
+Полный multi-node сценарий, синхронизация и LB/CDN: **[SCALING.md](SCALING.md)**.
 
 ## TLS-примеры
 
 Существующий wildcard/SAN:
 
 ```bash
-sudo ./scripts/install.sh \
-  --mode existing \
-  --domain arcade.example.com \
-  --tls existing
+sudo ./scripts/install.sh --mode existing --domain arcade.example.com --tls existing
 ```
 
 Let's Encrypt HTTP-01:
@@ -135,21 +164,21 @@ sudo ./scripts/install.sh \
 
 ## Первый вход в админку
 
-Откройте:
-
 ```text
 https://ваш-домен/admin.html
 ```
 
-Если `ADMIN_TOKEN` в `.env` пуст, backend создаст случайный токен:
+Если `ADMIN_TOKEN` в `.env` пуст, backend создаст случайный persistent token:
 
 ```bash
 cat catalog/admin-token
 ```
 
-Из админки можно загружать ROM/BIOS, сканировать коллекцию, редактировать карточки, принимать/отклонять найденные метаданные и проверять зависимости игры.
+Из Library Manager можно загружать ROM/BIOS, сканировать коллекцию, редактировать карточки, принимать/отклонять метаданные и проверять зависимости игры.
 
-## Управление
+На edge-нодах `/admin.html` и `/api/admin/*` отключены специально.
+
+## Управление single-node/control
 
 ```bash
 make up
@@ -159,7 +188,7 @@ make down
 make doctor
 ```
 
-или напрямую:
+или:
 
 ```bash
 docker compose up -d --build
@@ -170,31 +199,42 @@ docker compose down
 
 ## Обновление
 
+Рекомендуемый способ:
+
 ```bash
-git pull --ff-only
-./scripts/install-emulatorjs.sh 4.2.3
-docker compose build --pull
-docker compose up -d
-./scripts/doctor.sh --domain arcade.example.com
+./scripts/update.sh --mode standalone
 ```
 
-Перед обновлением сохраните `.env`, `catalog/`, `games/` и `public/covers/library/`.
+Edge:
+
+```bash
+./scripts/update.sh --mode edge
+```
+
+Весь edge-пул:
+
+```bash
+./scripts/cluster-update.sh --dry-run
+./scripts/cluster-update.sh
+```
+
+Подробно: **[UPDATE.md](UPDATE.md)**.
 
 ## Удаление и перенос
 
-Перед удалением сначала посмотрите план:
+Dry-run:
 
 ```bash
 sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
 ```
 
-Обычное удаление снимает только installer-managed Nginx-vhost и останавливает текущий Compose-проект. Данные библиотеки, сертификаты и системные пакеты сохраняются:
+Обычное удаление:
 
 ```bash
 sudo ./scripts/uninstall.sh --domain arcade.example.com
 ```
 
-Для переноса на другой сервер используйте migration mode:
+Перенос:
 
 ```bash
 sudo ./scripts/uninstall.sh \
@@ -203,23 +243,32 @@ sudo ./scripts/uninstall.sh \
   --backup-dir /root/retro-portal-backups
 ```
 
-Перед очисткой данных будет создан и проверен backup + SHA-256. Скрипт не выполняет глобальные Docker prune-команды и не удаляет Nginx/Docker/Certbot или чужие сервисы.
+Только edge-копия:
 
-Подробная инструкция и rollback-поведение: **[UNINSTALL.md](UNINSTALL.md)**.
+```bash
+./scripts/uninstall-edge.sh --dry-run
+./scripts/uninstall-edge.sh
+```
+
+Подробно: **[UNINSTALL.md](UNINSTALL.md)**.
 
 ## Где лежат данные
 
 ```text
 catalog/runtime-games.json   рабочий каталог
-catalog/stats.json           локальная статистика запусков
+catalog/stats.json           статистика запусков
 games/roms/                  ROM
 games/bios/                  BIOS
 public/covers/library/       обложки
-emulatorjs/data/             EmulatorJS
-.env                         локальные настройки/secrets
+public/screenshots/library/  screenshots
+emulatorjs/data/             EmulatorJS runtime
+.env                         настройки/secrets control/single-node
+.env.edge                    настройки конкретной edge-ноды
 ```
 
 ## Проверка после установки
+
+Single/control:
 
 ```bash
 ./scripts/doctor.sh --domain arcade.example.com
@@ -229,4 +278,11 @@ sudo nginx -t
 docker compose ps
 ```
 
-Для подробностей по библиотеке см. [LIBRARY.md](LIBRARY.md), по сетевому поведению — [NETWORKING.md](NETWORKING.md), по безопасному удалению — [UNINSTALL.md](UNINSTALL.md), по security — [../../SECURITY.md](../../SECURITY.md).
+Edge:
+
+```bash
+curl -i http://127.0.0.1:8088/healthz
+docker compose --env-file .env.edge -f docker-compose.edge.yml ps
+```
+
+Для библиотеки см. [LIBRARY.md](LIBRARY.md), масштабирования — [SCALING.md](SCALING.md), обновления — [UPDATE.md](UPDATE.md), сети — [NETWORKING.md](NETWORKING.md), удаления — [UNINSTALL.md](UNINSTALL.md), security — [../../SECURITY.md](../../SECURITY.md).
