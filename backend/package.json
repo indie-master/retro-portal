@@ -1,10 +1,13 @@
 {
   "name": "retro-portal-backend",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node bootstrap-run.js"
   },
   "dependencies": {
     "ws": "8.18.3"
