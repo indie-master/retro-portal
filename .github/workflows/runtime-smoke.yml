@@ -1,0 +1,56 @@
+name: Runtime Static Smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  emulatorjs-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Validate runtime installer permission contract
+        run: |
+          grep -q 'find "$DEST/data" -type d -exec chmod 0755' scripts/install-emulatorjs.sh
+          grep -q 'find "$DEST/data" -type f -exec chmod 0644' scripts/install-emulatorjs.sh
+          grep -q 'location \^~ /emulatorjs/' nginx.conf
+
+      - name: Start portal with runtime fixture
+        run: |
+          mkdir -p emulatorjs/data
+          printf 'window.__retroRuntimeSmoke = true;\n' > emulatorjs/data/loader.js
+          chmod 0755 emulatorjs emulatorjs/data
+          chmod 0644 emulatorjs/data/loader.js
+
+          cat >.env <<EOF
+          PORT=18091
+          BIND_ADDR=127.0.0.1
+          PUID=$(id -u)
+          PGID=$(id -g)
+          ADMIN_TOKEN=
+          THEGAMESDB_API_KEY=
+          WIKIPEDIA_METADATA=0
+          ALLOW_ZIP_ROMS=0
+          MAX_UPLOAD_BYTES=2147483648
+          EOF
+
+          docker compose up -d --build
+          trap 'docker compose logs --tail=120 || true; docker compose down -v || true' EXIT
+
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:18091/healthz >/dev/null && break
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:18091/healthz >/dev/null
+          curl -fsS http://127.0.0.1:18091/emulatorjs/data/loader.js | grep -q '__retroRuntimeSmoke'
+
+          NGINX_TEST="$(docker compose exec -T web nginx -t 2>&1)"
+          printf '%s\n' "$NGINX_TEST"
+          if grep -q 'duplicate extension "iso"' <<<"$NGINX_TEST"; then
+            echo 'Unexpected duplicate ISO MIME warning' >&2
+            exit 1
+          fi
