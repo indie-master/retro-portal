@@ -135,8 +135,8 @@ prepare_mutable_dirs() {
     "$INSTALL_DIR/public/covers/library" \
     "$INSTALL_DIR/public/screenshots/library"; do
     mkdir -p "$dir"
-    chown "$uid:$gid" "$dir"
-    chmod 0755 "$dir"
+    find "$dir" -type d -exec chown "$uid:$gid" {} +
+    find "$dir" -type d -exec chmod 0755 {} +
   done
 
   for file in \
@@ -148,7 +148,7 @@ prepare_mutable_dirs() {
     [[ -e "$file" ]] && chown "$uid:$gid" "$file"
   done
 
-  # Artwork is small and may be refreshed by metadata jobs, so normalize existing ownership there.
+  # Artwork is small and may be refreshed by metadata jobs, so normalize existing file ownership there.
   chown -R "$uid:$gid" "$INSTALL_DIR/public/covers/library" "$INSTALL_DIR/public/screenshots/library"
 }
 
