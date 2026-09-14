@@ -4,13 +4,15 @@ set -euo pipefail
 REPO_URL="https://github.com/indie-master/retro-portal.git"
 INSTALL_DIR="${RETRO_PORTAL_DIR:-/opt/retro-portal}"
 BRANCH="${RETRO_PORTAL_BRANCH:-main}"
+RECONFIGURE=0
+EXISTING_CHECKOUT=0
 FORWARD_ARGS=()
 
 usage() {
   cat <<'TXT'
 Retro Portal quick installer
 
-Downloads/updates Retro Portal into /opt/retro-portal by default and then starts the normal installer.
+Downloads/updates Retro Portal into /opt/retro-portal by default.
 All Retro Portal application services run through Docker Compose. An existing host Nginx, when used,
 remains an external reverse proxy and is not moved into the project containers.
 
@@ -18,13 +20,17 @@ Usage:
   sudo ./scripts/quick-install.sh
   sudo ./scripts/quick-install.sh --mode existing --domain arcade.example.com
   sudo ./scripts/quick-install.sh --install-dir /opt/retro-portal --mode manual --domain arcade.example.com
+  sudo ./scripts/quick-install.sh --reconfigure --mode existing --domain arcade.example.com
 
 Quick-installer options:
   --install-dir DIR   Installation directory (default: /opt/retro-portal)
   --branch NAME       Git branch to deploy (default: main)
+  --reconfigure       Re-run the configuration installer on an already initialized deployment
   --quick-help        Show this help
 
-All other arguments are forwarded unchanged to scripts/install.sh.
+All other arguments are forwarded unchanged to scripts/install.sh on first install/reconfigure.
+On an already initialized deployment, running without --reconfigure performs a safe code/container update
+and preserves the existing .env configuration.
 TXT
 }
 
@@ -37,6 +43,10 @@ while (($#)); do
     --branch)
       BRANCH="${2:-}"
       shift 2
+      ;;
+    --reconfigure)
+      RECONFIGURE=1
+      shift
       ;;
     --quick-help)
       usage
@@ -132,6 +142,7 @@ mkdir -p "$(dirname "$INSTALL_DIR")"
 
 if [[ -e "$INSTALL_DIR" ]]; then
   if safe_existing_checkout; then
+    EXISTING_CHECKOUT=1
     echo "Updating existing Retro Portal checkout in $INSTALL_DIR ..."
     git -C "$INSTALL_DIR" fetch --prune origin
     git -C "$INSTALL_DIR" checkout "$BRANCH"
@@ -148,11 +159,24 @@ else
 fi
 
 prepare_mutable_dirs
-chmod 0755 "$INSTALL_DIR" "$INSTALL_DIR/scripts" "$INSTALL_DIR/scripts/install.sh"
+chmod 0755 "$INSTALL_DIR" "$INSTALL_DIR/scripts" "$INSTALL_DIR/scripts/install.sh" "$INSTALL_DIR/scripts/update.sh"
 
 printf '\nRetro Portal checkout: %s\n' "$INSTALL_DIR"
 printf 'Application runtime: Docker Compose\n'
 printf 'Mutable library paths are prepared for the non-root backend container.\n\n'
 
 cd "$INSTALL_DIR"
+
+if ((EXISTING_CHECKOUT == 1 && RECONFIGURE == 0)) && [[ -f .env || -f .env.edge ]]; then
+  if ((${#FORWARD_ARGS[@]})); then
+    echo 'ERROR: this deployment is already initialized. Use --reconfigure before installer options,' >&2
+    echo 'or run quick-install with no installer options to perform a safe update.' >&2
+    exit 1
+  fi
+  if [[ -f .env.edge && ! -f .env ]]; then
+    exec ./scripts/update.sh --mode edge --no-git --yes
+  fi
+  exec ./scripts/update.sh --mode standalone --no-git --yes
+fi
+
 exec ./scripts/install.sh "${FORWARD_ARGS[@]}"
