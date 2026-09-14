@@ -1,13 +1,12 @@
 # Retro Portal
 
-<p align="center"><strong>A cozy self-hosted retro library: the owner curates the collection, players simply press Play.</strong></p>
+<p align="center"><strong>A self-hosted retro game library that runs directly in the browser.</strong></p>
 
 <p align="center">
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 OPEN LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README.md">Русский</a>
   &nbsp;·&nbsp; <a href="docs/en/INSTALL.md">Install</a>
   &nbsp;·&nbsp; <a href="docs/en/LIBRARY.md">Library Manager</a>
-  &nbsp;·&nbsp; <a href="docs/en/NETWORKING.md">Networking</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
 </p>
 
@@ -17,94 +16,54 @@
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
   <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.0-71cde2"></a>
-  <a href="SECURITY.md"><img alt="Security" src="https://img.shields.io/badge/security-hardened-7ddc78"></a>
 </p>
 
 ![Retro Portal home](docs/images/home.png)
 
-## Architecture
+## What it is
 
-```text
-Player
-  ↓
-/                     → only titles that are ready to play
-/game.html?id=...      → emulator + portal keyboard layer
-/local.html            → local user ROM; never uploaded
+Retro Portal turns a VPS, mini PC, or home server into a clean browser-based retro game library. A player opens the site, picks a title, and presses **Play**; emulation runs on the player's device in the browser.
 
-Owner
-  ↓
-/admin.html             → ROMs, BIOS, cards, metadata review, publishing
-```
+The project is built for everyday use: library shelves, search, filters, saves, keyboard/gamepad controls, live activity, launch statistics, and a separate owner dashboard.
 
-The public portal never exposes missing-ROM or BIOS diagnostics. A title appears only after the required runtime files are ready.
+## Features
 
-## 0.8.0 highlights
-
-- portal-native keyboard configuration on top of EmulatorJS `EJS_defaultControls`;
+- browser-based emulation powered by EmulatorJS;
+- Mega Drive, PlayStation, NES, SNES, Game Boy, GBA, Nintendo 64, and Arcade;
+- experimental Dreamcast support;
+- search, platform shelves, favorites, and multiplayer filtering;
 - per-game or per-platform keyboard profiles;
-- real online presence deduplicated by browser session ID;
-- real "playing now" and 7-day popularity based on actual launches;
-- automatic game description/history proposals;
-- metadata review workflow: **Approve / Reject** before publication;
-- title, story, history, featured and visibility management from `/admin.html`;
-- hardened ROM/BIOS upload path with extension allowlists, limits and safe stored filenames;
-- ZIP browser uploads disabled by default;
-- metadata cover downloads restricted to trusted provider hosts;
-- non-root/read-only backend container, dropped Linux capabilities and `no-new-privileges`;
-- CSP, anti-clickjacking headers and API rate limits;
-- documented actual network behavior for provider/CDN support: [docs/en/NETWORKING.md](docs/en/NETWORKING.md).
+- gamepad support;
+- local ROM launch without uploading the file to the server;
+- online presence, “playing now”, and 7-day popularity;
+- Library Manager for ROMs, BIOS files, cards, and publishing;
+- optional metadata proposals from TheGamesDB/Wikipedia with owner approval;
+- Docker Compose, Nginx, and multiple installation modes.
 
-## Library Manager
+## Live Demo
 
-The owner dashboard is available at `/admin.html` and handles ROM/BIOS uploads, dependency checks, scanning, card editing and metadata approval without routine console access.
+**https://indie-master.github.io/retro-portal/**
+
+The public build contains only redistributable demo/homebrew ROMs. Activity widgets use representative demo data so the complete interface can be previewed; a self-hosted installation populates the same widgets from the built-in backend.
+
+## Owner interface
+
+Library Manager is available at `/admin.html` and keeps routine collection management out of the shell:
+
+- ROM and BIOS uploads;
+- library scan after SCP/SFTP;
+- readiness checks;
+- title, description, history, and sorting edits;
+- featured/visibility management;
+- metadata proposals and approval.
 
 ![Retro Portal Library Manager](docs/images/admin.png)
 
-See [docs/en/LIBRARY.md](docs/en/LIBRARY.md).
+See **[docs/en/LIBRARY.md](docs/en/LIBRARY.md)**.
 
-## Keyboard controls
+## Quick start
 
-Retro Portal uses EmulatorJS' supported custom control mapping and adds a simple UI. Open any game and press **Keyboard** to change a binding. Profiles can be saved for one title or the entire platform.
-
-```text
-Arrow keys   movement
-Z / X        primary actions
-A / S / D    extra buttons
-Q / W        shoulder buttons
-Enter        Start
-Shift        Select / Mode
-```
-
-Official EmulatorJS control mapping docs: https://emulatorjs.org/docs4devs/control-mapping/
-
-## Real activity, not fake social proof
-
-The self-hosted online counter is based on live WebSocket sessions. Multiple tabs in the same browser share one local presence ID, so they do not inflate the counter.
-
-Retro Portal does not fabricate popularity. When nobody is playing, the UI says so. After real launches, the backend persists launch events and builds a 7-day popularity list. GitHub Pages clearly labels backend-less activity as demo mode.
-
-## Metadata review
-
-With `THEGAMESDB_API_KEY` configured, the backend can propose title/year/player count/overview/box art. Wikipedia's public API can optionally provide a short historical context paragraph.
-
-```ini
-THEGAMESDB_API_KEY=your-key
-WIKIPEDIA_METADATA=1
-```
-
-External text is sanitized and length-limited. It is stored as `pendingMetadata` and is not published until the owner approves it in `/admin.html`.
-
-## Security
-
-Only the owner/admin can upload ROMs or BIOS files to the server. The public **Local ROM** page keeps user-selected files inside the browser.
-
-Server-side hardening includes platform-specific extension allowlists, upload limits, SHA-256-based stored names, format-signature checks where reliable, ZIP disabled by default, metadata URL restrictions, brute-force throttling, hardened containers and HTTP security headers. `npm audit --audit-level=high`, CodeQL and Dependabot are part of the repository security workflow.
-
-No internet-facing application can honestly be guaranteed "unhackable". See the complete threat model in [SECURITY.md](SECURITY.md).
-
-## Installation
-
-### Interactive installer
+### Option 1 — interactive installer
 
 ```bash
 sudo apt update
@@ -114,7 +73,11 @@ cd retro-portal
 sudo ./scripts/install.sh
 ```
 
-### Docker Compose only
+The installer supports full setup, integration with an existing Nginx installation, manual snippets, and a local test mode.
+
+### Option 2 — Docker Compose
+
+If Docker Engine/Compose and a reverse proxy are already available:
 
 ```bash
 git clone https://github.com/indie-master/retro-portal.git
@@ -126,42 +89,92 @@ docker compose up -d
 curl -i http://127.0.0.1:8088/healthz
 ```
 
-Keep the app on `127.0.0.1:8088` where possible and publish it through your host reverse proxy. Existing-Nginx and manual-snippet modes are also supported.
+A common production layout keeps the app on `127.0.0.1:8088` and terminates HTTPS in host Nginx/Caddy/Traefik.
 
-See [docs/en/INSTALL.md](docs/en/INSTALL.md).
+Full setup guide: **[docs/en/INSTALL.md](docs/en/INSTALL.md)**.
 
-## Actual network behavior
+## Architecture
 
-The production portal uses ordinary HTTPS, JS/WASM/ROM downloads, short JSON APIs and one real long-lived `/ws/presence` WebSocket for online/current-game presence. It does **not** generate Xray XHTTP, arbitrary raw TCP or native gRPC traffic. See [docs/en/NETWORKING.md](docs/en/NETWORKING.md) for a provider-facing reference.
+```text
+Player browser
+  ├─ HTML / CSS / JS
+  ├─ EmulatorJS runtime / WASM
+  ├─ ROM / BIOS for the selected game
+  └─ WebSocket presence
+          ↓
+      Reverse proxy
+          ↓
+      Retro Portal
+      ├─ web
+      ├─ API
+      ├─ catalog
+      ├─ statistics
+      └─ Library Manager
+```
 
-## Requirements
+After ROM/runtime delivery, emulation runs on the player's device. The server handles the web UI, library files, API, presence, statistics, and owner tools.
 
-| Resource | Minimum | Recommended |
-|---|---:|---:|
-| Ubuntu | 22.04 | 24.04 LTS |
-| CPU | 1 vCPU | 2 vCPU |
-| RAM | 1 GB | 2 GB |
-| Disk | 20 GB | 40+ GB NVMe |
-| Network | 100 Mbps | 1 Gbps |
-| GPU | not required | not required |
+Endpoints, caching, and reverse-proxy notes: **[docs/en/NETWORKING.md](docs/en/NETWORKING.md)**.
 
-Emulation runs on the player's device, so the server does not need a GPU.
+## Controls
 
-## Upstream components
+Default desktop mapping:
 
-- EmulatorJS: https://emulatorjs.org/
-- Docker Engine: https://docs.docker.com/engine/
-- Nginx: https://nginx.org/
-- TheGamesDB: https://thegamesdb.net/
-- MediaWiki API: https://www.mediawiki.org/wiki/API:Main_page
+```text
+Arrow keys   movement
+Z / X        primary actions
+A / S / D    extra buttons
+Q / W        shoulder buttons
+Enter        Start
+Shift        Select / Mode
+```
 
-See [THIRD_PARTY.md](THIRD_PARTY.md) for third-party licensing.
+Bindings can be changed on the game page and saved for one title or the entire platform.
 
-## Live Demo
+## Activity
 
-https://indie-master.github.io/retro-portal/
+A self-hosted instance tracks active browser sessions through WebSocket presence and stores launch events for the weekly popularity list. Tabs from the same browser share one local session ID, keeping the online count closer to visitors than raw open-tab count.
 
-Only redistributable demo/homebrew ROMs are included in the public demo.
+## Security
+
+Retro Portal uses layered hardening:
+
+- admin API protected by `ADMIN_TOKEN` and brute-force throttling;
+- ROM/BIOS uploads constrained by format allowlists and size limits;
+- server-side paths do not trust original uploaded filenames;
+- ZIP browser upload disabled by default;
+- metadata fetching restricted to trusted sources;
+- non-root backend with read-only root filesystem, `no-new-privileges`, and dropped Linux capabilities;
+- Nginx CSP, anti-clickjacking, security headers, and API rate limits;
+- CI syntax/config checks, `npm audit`, and CodeQL.
+
+See **[SECURITY.md](SECURITY.md)** for the complete threat model and internet-facing deployment guidance.
+
+## Documentation
+
+| Topic | Document |
+|---|---|
+| Installation | [docs/en/INSTALL.md](docs/en/INSTALL.md) |
+| Library Manager | [docs/en/LIBRARY.md](docs/en/LIBRARY.md) |
+| Nginx / TLS | [docs/en/NGINX.md](docs/en/NGINX.md) |
+| Networking / reverse proxy | [docs/en/NETWORKING.md](docs/en/NETWORKING.md) |
+| ROM / BIOS | [docs/en/ROMS.md](docs/en/ROMS.md) |
+| Dreamcast | [docs/en/DREAMCAST.md](docs/en/DREAMCAST.md) |
+| Troubleshooting | [docs/en/TROUBLESHOOTING.md](docs/en/TROUBLESHOOTING.md) |
+| Security | [SECURITY.md](SECURITY.md) |
+| Third-party components | [THIRD_PARTY.md](THIRD_PARTY.md) |
+
+## Components
+
+- [EmulatorJS](https://emulatorjs.org/) — browser emulation;
+- [Docker Engine / Compose](https://docs.docker.com/engine/) — containers;
+- [Nginx](https://nginx.org/) — web/reverse proxy;
+- [TheGamesDB](https://thegamesdb.net/) — optional game metadata;
+- [MediaWiki API](https://www.mediawiki.org/wiki/API:Main_page) — optional historical context.
+
+## ROMs and BIOS files
+
+Commercial ROMs, BIOS files, and official artwork are not included in the repository. Users provide their own files. The public demo contains only ROMs that may be redistributed.
 
 ## License
 

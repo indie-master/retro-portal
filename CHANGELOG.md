@@ -5,9 +5,9 @@
 - added a Retro Portal keyboard configuration layer using EmulatorJS `EJS_defaultControls` and per-platform control schemes;
 - added per-game and per-platform keyboard profiles stored in the browser;
 - added a player-side controls modal and clearer keyboard/gamepad UX;
-- added real unique-session online counting instead of raw WebSocket-tab counting;
-- added persistent real launch statistics, "playing now" and 7-day popularity APIs/UI;
-- explicitly avoided fake social-proof counters; GitHub Pages labels backend-less activity as demo mode;
+- added unique-session online counting instead of raw WebSocket-tab counting;
+- added persistent launch statistics, "playing now" and 7-day popularity APIs/UI;
+- GitHub Pages now previews the complete activity interface with representative demo data;
 - added game description and history panels on the player page;
 - changed automatic metadata from immediate publication to a review workflow with pending proposals;
 - added owner-side metadata approve/reject actions plus direct card editing from `/admin.html`;
@@ -18,8 +18,9 @@
 - added admin authentication throttling and WebSocket same-origin/max-payload checks;
 - hardened Docker containers with read-only roots, `no-new-privileges`, PID limits and dropped backend capabilities;
 - added CSP, anti-clickjacking, permissions policy and Nginx API rate limiting;
-- replaced decorative README badges with real links to MIT, Ubuntu, Docker, EmulatorJS and security documentation;
+- replaced decorative README badges with real links to MIT, Ubuntu, Docker and EmulatorJS documentation;
 - expanded `SECURITY.md` with a threat model, trust boundaries and host-hardening guidance;
+- refreshed RU/EN project documentation, networking notes and installation examples;
 - bumped project version to `0.8.0`.
 
 ## 0.7.1 — Automatic metadata
