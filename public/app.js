@@ -40,17 +40,13 @@ function tagLabel(tag){
   return labels[tag]||tag;
 }
 
-function systemClass(system=''){
-  return system.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'retro';
-}
-
 function gameCard(game){
   const viewers=presenceByGame[game.id]||0;
   const preview=Array.isArray(game.screenshots)&&game.screenshots[0]?game.screenshots[0]:'';
   const tags=(game.tags||[]).filter(tag=>tag!=='homebrew').slice(0,2).map(tag=>`<span>${escapeHtml(tagLabel(tag))}</span>`).join('');
   const cover=game.cover?`<img src="${escapeHtml(game.cover)}" alt="Обложка ${escapeHtml(game.title)}" loading="lazy" onerror="this.remove()">`:'';
   const desc=game.description?`<span class="card-story">${escapeHtml(game.description.slice(0,120))}${game.description.length>120?'…':''}</span>`:'';
-  return `<article class="game-card ready ${game.demo?'demo-card':''}"><div class="cover-wrap"><div class="cover-fallback system-${systemClass(game.system)}"><span>${escapeHtml(game.system)}</span><strong>${escapeHtml(game.title)}</strong><em>${escapeHtml(game.year||'RETRO')}</em></div><div class="cover-art">${cover}</div>${preview?`<div class="cover-preview"><img src="${escapeHtml(preview)}" alt="Скриншот ${escapeHtml(game.title)}" loading="lazy" onerror="this.parentElement.remove()"></div>`:''}<div class="cover-shade"></div><span class="platform-badge">${game.demo?'DEMO':escapeHtml(game.system)}</span>${viewers?`<span class="playing-badge">● ${viewers} играет</span>`:''}</div><div class="game-card-body"><h4>${escapeHtml(game.title)}</h4><p>${escapeHtml(game.year||'')}${game.players?` · ${escapeHtml(game.players)}`:''}</p>${desc}${tags?`<div class="tags">${tags}</div>`:''}<div class="card-action"><a class="play-button" href="/game.html?id=${encodeURIComponent(game.id)}">▶ ИГРАТЬ</a></div></div></article>`;
+  return `<article class="game-card ready ${game.demo?'demo-card':''}"><div class="cover-wrap"><div class="cover-art">${cover}</div>${preview?`<div class="cover-preview"><img src="${escapeHtml(preview)}" alt="Скриншот ${escapeHtml(game.title)}" loading="lazy" onerror="this.parentElement.remove()"></div>`:''}<div class="cover-shade"></div><span class="platform-badge">${game.demo?'DEMO':escapeHtml(game.system)}</span>${viewers?`<span class="playing-badge">● ${viewers} играет</span>`:''}</div><div class="game-card-body"><h4>${escapeHtml(game.title)}</h4><p>${escapeHtml(game.year||'')}${game.players?` · ${escapeHtml(game.players)}`:''}</p>${desc}${tags?`<div class="tags">${tags}</div>`:''}<div class="card-action"><a class="play-button" href="/game.html?id=${encodeURIComponent(game.id)}">▶ ИГРАТЬ</a></div></div></article>`;
 }
 
 function shelf(title,list,id=''){
