@@ -1,122 +1,117 @@
 # Установка Retro Portal
 
-[← README](../../README.md) · [Nginx/TLS](NGINX.md) · [ROM/BIOS](ROMS.md) · [Диагностика](TROUBLESHOOTING.md)
+[← README](../../README.md) · [Library Manager](LIBRARY.md) · [Nginx/TLS](NGINX.md) · [Сеть](NETWORKING.md) · [Диагностика](TROUBLESHOOTING.md)
 
-## 1. Что понадобится
+## Что понадобится
 
 Рекомендуемый стартовый VPS: Ubuntu 24.04 LTS, 2 vCPU, 2 GB RAM, 40 GB NVMe, 100 Mbps+.
 
-До установки желательно иметь:
+До установки желательно иметь DNS-запись выбранного поддомена, `root`/`sudo` и один из вариантов TLS: уже существующий wildcard/SAN сертификат, Let's Encrypt HTTP-01 или DNS-01.
 
-- DNS-запись выбранного поддомена, если нужен публичный HTTPS;
-- доступ `root`/`sudo`;
-- открытые TCP 80/443 для обычного HTTP-01 сценария;
-- либо уже существующий сертификат;
-- либо Cloudflare API Token с DNS Edit для DNS-01.
+## Вариант A — интерактивный installer
 
-## 2. Клонирование
+Самый простой путь:
 
 ```bash
 sudo apt update
 sudo apt install -y git
 git clone https://github.com/indie-master/retro-portal.git retro-portal
 cd retro-portal
-```
-
-## 3. Интерактивная установка
-
-```bash
 sudo ./scripts/install.sh
 ```
 
-Будет предложено четыре режима.
-
-### Режим 1 — Full automatic
-
-Подходит для чистого VPS или обычного Nginx.
-
-Installer:
-
-1. проверяет Ubuntu;
-2. устанавливает необходимые пакеты;
-3. устанавливает Docker Engine из официального Docker apt repository, если его ещё нет;
-4. скачивает стабильный EmulatorJS;
-5. при желании устанавливает тестовые open-source ROM;
-6. запускает `docker compose`;
-7. проверяет `/healthz`;
-8. анализирует Nginx;
-9. выбирает безопасную схему интеграции;
-10. находит существующий сертификат или предлагает Let's Encrypt;
-11. создаёт отдельный vhost;
-12. выполняет `nginx -t`;
-13. только после успешной проверки делает reload.
+Installer предлагает четыре режима: полная установка, интеграция в существующий Nginx, ручная интеграция и локальный тест.
 
 ```bash
-sudo ./scripts/install.sh \
-  --mode full \
-  --domain arcade.example.com
-```
-
-### Режим 2 — Existing Nginx
-
-Для серверов, на которых Nginx уже обслуживает другие сайты, reverse proxy или `stream`.
-
-```bash
-sudo ./scripts/install.sh \
-  --mode existing \
-  --domain arcade.example.com
-```
-
-Если hostname уже существует в одном из server-блоков, installer его не переписывает: создаётся `generated/arcade.example.com.locations.conf`.
-
-### Режим 3 — Manual integration
-
-Приложение запускается на `127.0.0.1:8088`, Nginx не изменяется.
-
-```bash
-./scripts/install.sh \
-  --mode manual \
-  --domain arcade.example.com
-```
-
-Полученный snippet можно вручную вставить в существующий server-блок.
-
-### Режим 4 — Local test
-
-Быстрый тест без DNS/SSL:
-
-```bash
+sudo ./scripts/install.sh --mode full --domain arcade.example.com
+sudo ./scripts/install.sh --mode existing --domain arcade.example.com
+./scripts/install.sh --mode manual --domain arcade.example.com
 ./scripts/install.sh --mode local
 ```
 
-По умолчанию в local mode портал доступен на `http://SERVER_IP:8088/`.
+В режиме `existing` installer сначала анализирует `nginx -T`, существующие listener'ы, stream/ssl_preread и сертификаты. Перед reload всегда выполняется `nginx -t`.
 
-> Это тестовый режим без TLS. Не оставляйте его открытым в Интернет без необходимости.
+## Вариант B — только Docker Compose
 
-## 4. Неинтерактивные примеры
+Подходит, если Docker Engine + Compose уже установлены и вы хотите сами управлять reverse proxy/TLS.
 
-### Использовать уже установленный wildcard/SAN certificate
+```bash
+git clone https://github.com/indie-master/retro-portal.git
+cd retro-portal
+cp .env.example .env
+./scripts/install-emulatorjs.sh 4.2.3
+```
+
+При необходимости добавьте demo-ROM:
+
+```bash
+./scripts/install-homebrew-roms.sh
+```
+
+Проверьте `.env`:
+
+```ini
+PORT=8088
+BIND_ADDR=127.0.0.1
+PUID=1000
+PGID=1000
+ADMIN_TOKEN=
+THEGAMESDB_API_KEY=
+WIKIPEDIA_METADATA=1
+ALLOW_ZIP_ROMS=0
+MAX_UPLOAD_BYTES=2147483648
+```
+
+Запуск:
+
+```bash
+docker compose pull
+docker compose build --pull
+docker compose up -d
+```
+
+Проверка:
+
+```bash
+docker compose ps
+curl -i http://127.0.0.1:8088/healthz
+curl -s http://127.0.0.1:8088/api/games | jq
+```
+
+После этого подключите ваш host Nginx/Caddy/Traefik к `127.0.0.1:8088`. Не публикуйте внутренний порт наружу без необходимости.
+
+## Вариант C — существующий Nginx без изменений installer'ом
+
+Запустите приложение через Compose, затем используйте:
+
+```bash
+./scripts/install.sh --mode manual --domain arcade.example.com
+```
+
+Installer создаст snippets в `generated/`, но не будет менять активный Nginx. Это удобный вариант для сложных конфигураций, где уже используются `stream`, `ssl_preread`, PROXY protocol или собственная схема сертификатов.
+
+## TLS-примеры
+
+Существующий wildcard/SAN:
 
 ```bash
 sudo ./scripts/install.sh \
   --mode existing \
   --domain arcade.example.com \
-  --tls existing \
-  --demo-roms
+  --tls existing
 ```
 
-### Выпустить Let's Encrypt HTTP-01
+Let's Encrypt HTTP-01:
 
 ```bash
 sudo ./scripts/install.sh \
   --mode full \
   --domain arcade.example.com \
   --tls certbot-http \
-  --email admin@example.com \
-  --no-demo-roms
+  --email admin@example.com
 ```
 
-### Выпустить сертификат через Cloudflare DNS-01
+Cloudflare DNS-01:
 
 ```bash
 sudo ./scripts/install.sh \
@@ -127,7 +122,7 @@ sudo ./scripts/install.sh \
   --email admin@example.com
 ```
 
-### Свой сертификат
+Свой сертификат:
 
 ```bash
 sudo ./scripts/install.sh \
@@ -138,17 +133,23 @@ sudo ./scripts/install.sh \
   --key /path/privkey.pem
 ```
 
-## 5. Проверка после установки
+## Первый вход в админку
 
-```bash
-./scripts/doctor.sh --domain arcade.example.com
-curl -i http://127.0.0.1:8088/healthz
-curl -s http://127.0.0.1:8088/api/games | jq
-sudo nginx -t
-docker compose ps
+Откройте:
+
+```text
+https://ваш-домен/admin.html
 ```
 
-## 6. Управление
+Если `ADMIN_TOKEN` в `.env` пуст, backend создаст случайный токен:
+
+```bash
+cat catalog/admin-token
+```
+
+Из админки можно загружать ROM/BIOS, сканировать коллекцию, редактировать карточки, принимать/отклонять найденные метаданные и проверять зависимости игры.
+
+## Управление
 
 ```bash
 make up
@@ -158,41 +159,47 @@ make down
 make doctor
 ```
 
-Без Makefile:
+или напрямую:
 
 ```bash
 docker compose up -d --build
 docker compose logs -f --tail=100
+docker compose restart
 docker compose down
 ```
 
-## 7. Где лежат данные
+## Обновление
+
+```bash
+git pull --ff-only
+./scripts/install-emulatorjs.sh 4.2.3
+docker compose build --pull
+docker compose up -d
+./scripts/doctor.sh --domain arcade.example.com
+```
+
+Перед обновлением сохраните `.env`, `catalog/`, `games/` и `public/covers/library/`.
+
+## Где лежат данные
 
 ```text
-catalog/games.json    каталог
-games/roms/           ROM
-games/bios/           BIOS
-public/covers/        обложки
-emulatorjs/data/      EmulatorJS
-.env                  bind/port
+catalog/runtime-games.json   рабочий каталог
+catalog/activity.json        локальная статистика запусков
+games/roms/                  ROM
+games/bios/                  BIOS
+public/covers/library/       обложки
+emulatorjs/data/             EmulatorJS
+.env                         локальные настройки/secrets
 ```
 
-## 8. Демо-игры
-
-Шесть MIT-лицензированных Mega Drive homebrew ROM можно установить одной командой:
+## Проверка после установки
 
 ```bash
-./scripts/install-homebrew-roms.sh
+./scripts/doctor.sh --domain arcade.example.com
+curl -i http://127.0.0.1:8088/healthz
+curl -s http://127.0.0.1:8088/api/activity | jq
+sudo nginx -t
+docker compose ps
 ```
 
-## 9. Библиотека популярных игр
-
-Для Sonic 2, Mortal Kombat II, Streets of Rage 2, Comix Zone, Road Rash III, Contra: Hard Corps, Tekken 3, Crash 3, CTR, THPS2, Resident Evil 2, Worms Armageddon и экспериментальных Dreamcast-игр уже есть metadata preset в `catalog/presets/curated-classics.json`.
-
-Положите собственные ROM/BIOS/обложки по ожидаемым путям и выполните:
-
-```bash
-./scripts/sync-classics.sh
-```
-
-В рабочий каталог попадут только полностью готовые записи.
+Для подробностей по библиотеке см. [LIBRARY.md](LIBRARY.md), по сетевому поведению — [NETWORKING.md](NETWORKING.md), по security — [../../SECURITY.md](../../SECURITY.md).
