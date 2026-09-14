@@ -1,0 +1,4 @@
+name: Runtime Smoke
+
+on:
+  workflow_dispatch:
