@@ -25,6 +25,7 @@ public/screenshots/library/*
 # Generated installer output / backups
 generated/
 .installer-backups/
+backups/
 
 # Node
 backend/node_modules/

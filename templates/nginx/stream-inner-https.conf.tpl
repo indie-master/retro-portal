@@ -1,4 +1,5 @@
-# Retro Portal vhost for installations where Nginx stream owns public :443.
+# Managed by Retro Portal installer.
+# Inner HTTPS vhost for installations where Nginx stream owns public :443.
 server { listen 80; listen [::]:80; server_name {{DOMAIN}}; location ^~ /.well-known/acme-challenge/ { root {{ACME_ROOT}}; default_type text/plain; } location / { return 301 https://$host$request_uri; } }
 server {
     listen 127.0.0.1:{{INNER_TLS_PORT}} ssl{{PROXY_PROTOCOL_SUFFIX}}; server_name {{DOMAIN}};

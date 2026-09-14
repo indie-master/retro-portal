@@ -6,6 +6,7 @@
   <a href="https://indie-master.github.io/retro-portal/"><strong>🎮 ОТКРЫТЬ LIVE DEMO</strong></a>
   &nbsp;·&nbsp; <a href="README_EN.md">English</a>
   &nbsp;·&nbsp; <a href="docs/ru/INSTALL.md">Установка</a>
+  &nbsp;·&nbsp; <a href="docs/ru/UNINSTALL.md">Удаление / перенос</a>
   &nbsp;·&nbsp; <a href="docs/ru/LIBRARY.md">Library Manager</a>
   &nbsp;·&nbsp; <a href="SECURITY.md">Безопасность</a>
 </p>
@@ -15,7 +16,7 @@
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
   <a href="https://docs.docker.com/engine/"><img alt="Docker Engine" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.0-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.8.1-71cde2"></a>
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
@@ -38,7 +39,8 @@ Retro Portal превращает VPS, мини‑ПК или домашний �
 - online presence, блок «Во что играют сейчас» и популярность за 7 дней;
 - Library Manager для ROM, BIOS, карточек игр и публикации;
 - автоматические предложения метаданных из TheGamesDB/Wikipedia с подтверждением владельцем;
-- Docker Compose, Nginx и несколько сценариев установки.
+- Docker Compose, Nginx и несколько сценариев установки;
+- безопасное штатное удаление/перенос без глобальной очистки Docker или Nginx.
 
 ## Live Demo
 
@@ -92,6 +94,33 @@ curl -i http://127.0.0.1:8088/healthz
 По умолчанию приложение удобно держать на `127.0.0.1:8088`, а HTTPS завершать на host Nginx/Caddy/Traefik.
 
 Полная инструкция: **[docs/ru/INSTALL.md](docs/ru/INSTALL.md)**.
+
+## Безопасное удаление и перенос
+
+Перед удалением можно увидеть точный план без изменений:
+
+```bash
+sudo ./scripts/uninstall.sh --domain arcade.example.com --dry-run
+```
+
+Обычное удаление останавливает только текущий Compose-проект и снимает только installer-managed Nginx-vhost; ROM, BIOS, каталог и сертификаты сохраняются:
+
+```bash
+sudo ./scripts/uninstall.sh --domain arcade.example.com
+```
+
+Для переноса на другую машину:
+
+```bash
+sudo ./scripts/uninstall.sh \
+  --domain arcade.example.com \
+  --move \
+  --backup-dir /root/retro-portal-backups
+```
+
+Migration mode сначала создаёт и проверяет архив + SHA-256, а уже потом очищает локальные данные/runtime. Скрипт не выполняет `docker system prune`, не удаляет Docker/Nginx/Certbot и не переписывает произвольные shared `stream`/SNI-конфиги.
+
+Подробно: **[docs/ru/UNINSTALL.md](docs/ru/UNINSTALL.md)**.
 
 ## Как устроено
 
@@ -155,6 +184,7 @@ Self-hosted версия считает активные браузерные с
 | Раздел | Документ |
 |---|---|
 | Установка | [docs/ru/INSTALL.md](docs/ru/INSTALL.md) |
+| Удаление / перенос | [docs/ru/UNINSTALL.md](docs/ru/UNINSTALL.md) |
 | Library Manager | [docs/ru/LIBRARY.md](docs/ru/LIBRARY.md) |
 | Nginx / TLS | [docs/ru/NGINX.md](docs/ru/NGINX.md) |
 | Сеть и reverse proxy | [docs/ru/NETWORKING.md](docs/ru/NETWORKING.md) |
