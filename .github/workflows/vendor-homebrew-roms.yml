@@ -15,7 +15,7 @@ jobs:
   vendor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download verified MIT-licensed ROMs
         run: ./scripts/install-homebrew-roms.sh
       - name: Commit ROMs
