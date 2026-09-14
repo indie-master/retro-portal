@@ -1,0 +1,114 @@
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+    server_tokens off;
+    client_max_body_size 1m;
+
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header Cross-Origin-Embedder-Policy "require-corp" always;
+    add_header Cross-Origin-Resource-Policy "same-origin" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "same-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+    add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss: blob:; worker-src 'self' blob:; media-src 'self' blob:" always;
+
+    location ~ /\. { deny all; }
+
+    # Local health endpoint for a load balancer/CDN. It does not depend on the control node.
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 'ok\n';
+    }
+
+    # Administrative endpoints are deliberately unavailable on edge nodes.
+    location = /admin.html { return 404; }
+    location ^~ /api/admin/ { return 404; }
+
+    # Small dynamic requests stay on the control/origin node.
+    location /api/ {
+        proxy_pass ${CONTROL_ORIGIN_SCHEME}://${CONTROL_ORIGIN_HOST}:${CONTROL_ORIGIN_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host ${CONTROL_ORIGIN_HOST};
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+        proxy_ssl_name ${CONTROL_ORIGIN_HOST};
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+
+    # Presence remains centralized so online/current-game counters are consistent across edges.
+    location /ws/ {
+        proxy_pass ${CONTROL_ORIGIN_SCHEME}://${CONTROL_ORIGIN_HOST}:${CONTROL_ORIGIN_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host ${CONTROL_ORIGIN_HOST};
+        proxy_set_header Origin ${CONTROL_ORIGIN_SCHEME}://${CONTROL_ORIGIN_HOST};
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+        proxy_ssl_name ${CONTROL_ORIGIN_HOST};
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;
+        proxy_buffering off;
+    }
+
+    # Large/cacheable files are served locally by every edge node.
+    location /roms/ {
+        alias /srv/roms/;
+        autoindex off;
+        limit_except GET HEAD { deny all; }
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    location /bios/ {
+        alias /srv/bios/;
+        autoindex off;
+        limit_except GET HEAD { deny all; }
+        expires 7d;
+        add_header Cache-Control "private, max-age=604800" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    location /emulatorjs/ {
+        alias /srv/emulatorjs/;
+        autoindex off;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    location ~* \.(css|js|svg|png|jpg|jpeg|webp|ico|woff2)$ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri $uri/ /index.html;
+    }
+}
