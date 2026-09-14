@@ -36,7 +36,7 @@ jobs:
           python3 -m json.tool catalog/games.json >/dev/null
           python3 -m json.tool catalog/presets/curated-classics.json >/dev/null
           python3 scripts/catalog-check.py
-      - name: Library manager, scaling and controls files
+      - name: Library manager, mobile, metadata and scaling files
         run: |
           test -s public/admin.html
           test -s public/admin.js
@@ -44,6 +44,10 @@ jobs:
           test -s public/controls.js
           test -s public/styles-controls.css
           test -s public/styles-activity.css
+          test -s public/styles-mobile-player.css
+          test -s backend/metadata-worker.js
+          test -s docs/ru/MOBILE.md
+          test -s docs/en/MOBILE.md
           test -s docs/ru/LIBRARY.md
           test -s docs/en/LIBRARY.md
           test -s docs/ru/NETWORKING.md
@@ -58,7 +62,11 @@ jobs:
           test -s SECURITY.md
           grep -q 'data-cover-upload' public/admin.js
           grep -q '/api/admin/upload/cover/' backend/server.js
-          grep -q 'real_ip_header X-Real-IP' nginx.conf
+          grep -q 'filter\[platform\]' backend/metadata-worker.js
+          grep -q 'libretro-thumbnails' backend/metadata-worker.js
+          grep -q 'mobileMode' public/game.js
+          grep -q 'viewport-fit=cover' public/game.html
+          grep -q 'retro_client_ip' nginx.conf
           grep -q '^catalog/admin-token$' .gitignore
           grep -q '^catalog/runtime-games.json$' .gitignore
           grep -q '^catalog/stats.json$' .gitignore
@@ -72,6 +80,7 @@ jobs:
       - name: Docker Compose
         run: |
           docker compose config >/dev/null
+          docker compose config --services | grep -qx metadata
           CONTROL_ORIGIN_HOST=example.com docker compose --env-file .env.edge.example -f docker-compose.edge.yml config >/dev/null
       - name: Nginx syntax
         run: |
@@ -106,11 +115,13 @@ jobs:
           ADMIN_TOKEN=
           THEGAMESDB_API_KEY=
           WIKIPEDIA_METADATA=0
+          AUTO_METADATA=0
+          AUTO_METADATA_OVERWRITE=0
           ALLOW_ZIP_ROMS=0
           MAX_UPLOAD_BYTES=2147483648
           EOF
           docker compose up -d --build
-          trap 'docker compose logs --tail=200 || true; docker compose down -v || true' EXIT
+          trap 'docker compose logs --tail=220 || true; docker compose down -v || true' EXIT
           for i in $(seq 1 50); do
             curl -fsS http://127.0.0.1:18088/healthz >/dev/null && break
             sleep 1
@@ -119,6 +130,8 @@ jobs:
           test -s catalog/admin-token
           TOKEN="$(cat catalog/admin-token)"
           test "${#TOKEN}" -ge 32
+          docker compose ps --status running metadata | grep -q metadata
+          docker compose logs metadata | grep -q 'AUTO_METADATA=0'
           curl -fsS http://127.0.0.1:18088/api/games > /tmp/public-games.json
           curl -fsS http://127.0.0.1:18088/api/activity > /tmp/activity.json
           curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18088/api/admin/status > /tmp/admin-status.json
@@ -152,7 +165,9 @@ jobs:
 
           curl -fsS -H 'X-Real-IP: 203.0.113.77' http://127.0.0.1:18088/api/status >/dev/null
           sleep 1
-          docker compose logs web | grep -q '203.0.113.77'
+          docker compose logs web > /tmp/web.log
+          grep -q '203.0.113.77 - -' /tmp/web.log
+          grep -q 'peer=' /tmp/web.log
 
           python3 - <<'PY'
           import json
