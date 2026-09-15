@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.1 — Reliable frontend refresh
+
+- make `scripts/update.sh` explicitly recreate only the public frontend service after code updates so bind-mounted Nginx configuration changes take effect immediately;
+- apply the same frontend refresh during rollback so a restored config is not left behind an old running Nginx process;
+- change application `.js`/`.css` delivery to revalidate instead of caching the previous UI for seven days, while keeping images/fonts and EmulatorJS heavy runtime assets cache-friendly;
+- keep backend, metadata state, ROMs, BIOS and catalog untouched while refreshing the frontend service;
+- bumped project version to `0.10.1`.
+
 ## 0.10.0 — Mobile play, automatic metadata & real client IPs
 
 - added a touch-first mobile player with safe-area handling, responsive controls, fullscreen mobile mode and best-effort landscape orientation locking;
