@@ -41,7 +41,7 @@ const game = {
   playable: true
 };
 
-function createEnvironment({ touch, nativeFullscreen }) {
+function createEnvironment({ touch, nativeFullscreen, silentWebkit = false }) {
   const ids = [
     'gameTitle', 'gameSystem', 'playerNotice', 'gameFrame', 'fullscreenGame',
     'controlsOpen', 'gamepadNotice', 'controlsGamepadStatus', 'gameInfo',
@@ -73,6 +73,7 @@ function createEnvironment({ touch, nativeFullscreen }) {
       documentListeners.get('fullscreenchange')?.();
     };
   }
+  if (silentWebkit) elements.gameFrame.webkitRequestFullscreen = () => undefined;
   const window = {
     crossOriginIsolated: true,
     addEventListener: (type, callback) => windowListeners.set(type, callback),
@@ -112,8 +113,10 @@ assert.equal(mobile.appendedScripts.length, 1, 'mobile should start the runtime 
 assert.equal(mobile.elements.playerNotice.hidden, true, 'normal loading must not show a notice banner');
 assert.equal(mobile.elements.playerNotice.textContent, '', 'normal loading must not write status copy');
 assert.equal(mobile.context.window.EJS_threads, false, 'mobile PlayStation should avoid threaded peak memory overhead');
-assert.equal(mobile.context.window.EJS_CacheLimit, 8 * 1024 * 1024, 'mobile PlayStation should avoid a second large ROM cache copy');
+assert.equal(mobile.context.window.EJS_CacheLimit, 0, 'mobile PlayStation should not create a second ROM cache copy');
+assert.equal(mobile.context.window.EJS_mobileDiscStream, true, 'mobile PlayStation CHD should use range streaming');
 assert.equal(mobile.context.window.EJS_VirtualGamepadSettings.some((item) => item.id === 'cross'), true);
+assert.equal(mobile.appendedScripts[0].src, '/emulatorjs-mobile-loader.js');
 await mobile.elements.fullscreenGame.fire('click');
 assert.equal(mobile.document.fullscreenElement, mobile.elements.gameFrame, 'fullscreen button should request native fullscreen directly');
 await mobile.elements.fullscreenGame.fire('click');
@@ -128,11 +131,19 @@ assert.match(fallback.elements.fullscreenGame.textContent, /ВЫЙТИ ИЗ ЭК
 await fallback.elements.fullscreenGame.fire('click');
 assert.equal(fallback.body.classList.contains('player-fullscreen-fallback'), false, 'the same fullscreen button should close the fallback');
 
+const ignoredWebkit = createEnvironment({ touch: true, nativeFullscreen: false, silentWebkit: true });
+await vm.runInNewContext(source, ignoredWebkit.context, { filename: 'public/game.js' });
+await new Promise((resolve) => setTimeout(resolve, 0));
+await ignoredWebkit.elements.fullscreenGame.fire('click');
+assert.equal(ignoredWebkit.body.classList.contains('player-fullscreen-fallback'), true, 'ignored iPhone WebKit fullscreen requests should use the viewport fallback');
+
 const desktop = createEnvironment({ touch: false, nativeFullscreen: true });
 await vm.runInNewContext(source, desktop.context, { filename: 'public/game.js' });
 await new Promise((resolve) => setTimeout(resolve, 0));
 assert.equal(desktop.appendedScripts.length, 1, 'desktop automatic startup should remain intact');
 assert.equal(desktop.context.window.EJS_threads, true);
 assert.equal(desktop.context.window.EJS_CacheLimit, 1024 * 1024 * 1024);
+assert.equal(desktop.context.window.EJS_mobileDiscStream, false);
+assert.equal(desktop.appendedScripts[0].src, '/emulatorjs/data/loader.js');
 
 console.log('Simple mobile player smoke checks passed.');

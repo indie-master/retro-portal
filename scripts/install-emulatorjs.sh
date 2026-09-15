@@ -27,6 +27,10 @@ LOADER="$(find "$TMP/extracted" -type f -path '*/data/loader.js' -print -quit)"
 }
 
 DATA_DIR="$(dirname "$LOADER")"
+grep -qF '    const config = {};' "$LOADER" || {
+  echo 'Unsupported EmulatorJS loader: the mobile disc extension requires the pinned 4.2.3 bootstrap.' >&2
+  exit 1
+}
 rm -rf "$DEST/data"
 mkdir -p "$DEST"
 cp -a "$DATA_DIR" "$DEST/data"

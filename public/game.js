@@ -13,7 +13,7 @@ const gameDescription = document.querySelector('#gameDescription');
 const gameHistory = document.querySelector('#gameHistory');
 const historyCard = document.querySelector('#historyCard');
 const touchLike = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
-const MOBILE_DISC_CACHE_LIMIT = 8 * 1024 * 1024;
+const MOBILE_DISC_CACHE_LIMIT = 0;
 const DEFAULT_CACHE_LIMIT = 1024 * 1024 * 1024;
 let loadedGame = null;
 let playRecorded = false;
@@ -56,7 +56,12 @@ async function toggleFullscreen() {
   }
   try {
     if (frame.requestFullscreen) await frame.requestFullscreen({ navigationUI: 'hide' });
-    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+    else if (frame.webkitRequestFullscreen) {
+      const request = frame.webkitRequestFullscreen();
+      if (request?.then) await request;
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      if (!fullscreenElement()) throw new Error('WebKit fullscreen request was ignored');
+    }
     else throw new Error('Fullscreen API unavailable');
     await lockLandscape();
   } catch (error) {
@@ -74,6 +79,10 @@ function syncFullscreenButton() {
 
 fullscreenButton?.addEventListener('click', toggleFullscreen);
 controlsButton?.addEventListener('click', () => loadedGame && window.RetroControls?.open(loadedGame));
+window.addEventListener('retro:emulator-error', () => {
+  runtimeStarted = false;
+  showError('Не удалось загрузить эмулятор. Обновите страницу и попробуйте ещё раз.');
+});
 document.addEventListener('fullscreenchange', syncFullscreenButton);
 document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 document.addEventListener('keydown', (event) => {
@@ -93,6 +102,11 @@ function stableNumericGameId(game) {
 
 function isPlayStation(game) {
   return game.system === 'PlayStation' || game.core === 'psx' || game.core === 'pcsx_rearmed';
+}
+
+function supportsMobileDiscStream(game) {
+  const format = String(game.romFormat || game.romUrl?.split('.').pop() || '').toLowerCase();
+  return touchLike && isPlayStation(game) && ['chd', 'pbp'].includes(format);
 }
 
 function playStationVirtualGamepad() {
@@ -168,6 +182,7 @@ async function recordPlay(game) {
 
 function configureEmulator(game) {
   const mobilePlayStation = touchLike && isPlayStation(game);
+  const mobileDiscStream = supportsMobileDiscStream(game);
   window.EJS_player = '#game';
   window.EJS_core = game.core;
   window.EJS_controlScheme = game.controlScheme || game.core;
@@ -183,6 +198,7 @@ function configureEmulator(game) {
   window.EJS_disableAutoLang = true;
   window.EJS_threads = Boolean(window.crossOriginIsolated) && !mobilePlayStation;
   window.EJS_CacheLimit = mobilePlayStation ? MOBILE_DISC_CACHE_LIMIT : DEFAULT_CACHE_LIMIT;
+  window.EJS_mobileDiscStream = mobileDiscStream;
   window.EJS_VirtualGamepadSettings = mobilePlayStation ? playStationVirtualGamepad() : undefined;
   window.EJS_fixedSaveInterval = 15000;
   window.EJS_color = '#d99a47';
@@ -202,7 +218,7 @@ function startEmulator(game) {
   configureEmulator(game);
   window.RetroPresence?.playing(game.id);
   const script = document.createElement('script');
-  script.src = '/emulatorjs/data/loader.js';
+  script.src = window.EJS_mobileDiscStream ? '/emulatorjs-mobile-loader.js' : '/emulatorjs/data/loader.js';
   script.async = true;
   script.onerror = () => {
     script.remove();
