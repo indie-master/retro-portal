@@ -1,1 +1,3 @@
-.hero-art{background-image:url('/assets/home-room.jpg')!important;background-position:center!important;background-size:cover!important;background-repeat:no-repeat!important}.local-hero-art{background-image:url('/assets/local-room.jpg')!important;background-position:center!important;background-size:cover!important;background-repeat:no-repeat!important}
+/* The home hero is rendered from the layered CRT/room/controller scene in styles-v060.css.
+   Keeping it CSS-native makes it responsive, crisp on HiDPI displays and consistent with the warm portal palette. */
+.local-hero-art{background-image:url('/assets/local-room.jpg')!important;background-position:center!important;background-size:cover!important;background-repeat:no-repeat!important}
