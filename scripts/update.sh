@@ -34,7 +34,8 @@ Options:
   -h, --help
 
 The updater refuses tracked/untracked working-tree changes, uses ff-only Git updates and rolls code/containers
-back to the previous commit if the post-update local health check fails.
+back to the previous commit if the post-update local health check fails. Portal containers are recreated so
+mounted Nginx/config changes take effect immediately; unrelated Docker projects are never touched.
 TXT
 }
 
@@ -71,23 +72,17 @@ docker compose version >/dev/null 2>&1 || die 'Docker Compose plugin is required
 
 read_env_number() {
   local file="$1" key="$2" fallback="$3" value=''
-  if [[ -f "$file" ]]; then
-    value="$(sed -n "s/^${key}=//p" "$file" | tail -1 | tr -d '[:space:]' || true)"
-  fi
+  if [[ -f "$file" ]]; then value="$(sed -n "s/^${key}=//p" "$file" | tail -1 | tr -d '[:space:]' || true)"; fi
   [[ "$value" =~ ^[0-9]+$ ]] || value="$fallback"
   printf '%s\n' "$value"
 }
-
 APP_PORT="$(read_env_number "$ENV_FILE" "$PORT_KEY" "$DEFAULT_PORT")"
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   OLD_SHA="$(git rev-parse HEAD)"
   if ((NO_GIT == 0)); then
     [[ -z "$(git status --porcelain)" ]] || die 'Working tree has changes. Commit/stash/remove them before automated update.'
-    if ((ASSUME_YES == 0)); then
-      info "Current commit: $OLD_SHA"
-      ask_yes_no "Pull latest code and update $MODE deployment?" y || { echo 'Cancelled.'; exit 0; }
-    fi
+    if ((ASSUME_YES == 0)); then info "Current commit: $OLD_SHA"; ask_yes_no "Pull latest code and update $MODE deployment?" y || { echo 'Cancelled.'; exit 0; }; fi
     info 'Fetching repository updates...'
     git fetch --prune origin
     git pull --ff-only
@@ -97,12 +92,8 @@ elif ((NO_GIT == 0)); then
   warn 'This checkout is not a Git work tree; continuing as --no-git.'
 fi
 
-if [[ "$MODE" == standalone && ! -f emulatorjs/data/loader.js ]]; then
+if [[ ! -f emulatorjs/data/loader.js ]]; then
   info 'EmulatorJS runtime is missing; installing pinned runtime...'
-  ./scripts/install-emulatorjs.sh 4.2.3
-fi
-if [[ "$MODE" == edge && ! -f emulatorjs/data/loader.js ]]; then
-  info 'EmulatorJS runtime is missing on this edge; installing pinned runtime...'
   ./scripts/install-emulatorjs.sh 4.2.3
 fi
 
@@ -110,7 +101,7 @@ update_containers() {
   info "Updating $MODE containers..."
   "${COMPOSE[@]}" pull --ignore-buildable || true
   "${COMPOSE[@]}" build --pull
-  "${COMPOSE[@]}" up -d --remove-orphans
+  "${COMPOSE[@]}" up -d --remove-orphans --force-recreate
 }
 
 health_ok() {
@@ -126,17 +117,10 @@ rollback() {
   [[ -n "$OLD_SHA" && $UPDATED_GIT -eq 1 ]] || return 1
   fail 'Post-update health check failed. Rolling repository and containers back to the previous commit.'
   git reset --hard "$OLD_SHA"
-  if [[ "$MODE" == edge ]]; then
-    COMPOSE=(docker compose --env-file .env.edge -f docker-compose.edge.yml)
-  else
-    COMPOSE=(docker compose)
-  fi
+  if [[ "$MODE" == edge ]]; then COMPOSE=(docker compose --env-file .env.edge -f docker-compose.edge.yml); else COMPOSE=(docker compose); fi
   "${COMPOSE[@]}" build
-  "${COMPOSE[@]}" up -d --remove-orphans
-  if health_ok; then
-    ok "Rollback succeeded; deployment is healthy again at commit $OLD_SHA."
-    return 0
-  fi
+  "${COMPOSE[@]}" up -d --remove-orphans --force-recreate
+  if health_ok; then ok "Rollback succeeded; deployment is healthy again at commit $OLD_SHA."; return 0; fi
   fail 'Rollback was attempted but the local health check is still failing. Inspect docker compose logs immediately.'
   return 1
 }
