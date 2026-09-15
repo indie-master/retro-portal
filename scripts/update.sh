@@ -106,11 +106,22 @@ if [[ "$MODE" == edge && ! -f emulatorjs/data/loader.js ]]; then
   ./scripts/install-emulatorjs.sh 4.2.3
 fi
 
+reload_standalone_web() {
+  [[ "$MODE" == standalone ]] || return 0
+  info 'Validating and reloading standalone web proxy...'
+  "${COMPOSE[@]}" exec -T web nginx -t || return 1
+  "${COMPOSE[@]}" restart web || return 1
+}
+
 update_containers() {
   info "Updating $MODE containers..."
   "${COMPOSE[@]}" pull --ignore-buildable || true
-  "${COMPOSE[@]}" build --pull
-  "${COMPOSE[@]}" up -d --remove-orphans
+  "${COMPOSE[@]}" build --pull || return 1
+  "${COMPOSE[@]}" up -d --remove-orphans || return 1
+  # nginx.conf is bind-mounted in standalone mode. Compose can leave the
+  # existing web container running after a Git update, so explicitly restart
+  # it to make Nginx consume the new configuration and log format.
+  reload_standalone_web || return 1
 }
 
 health_ok() {
@@ -131,8 +142,9 @@ rollback() {
   else
     COMPOSE=(docker compose)
   fi
-  "${COMPOSE[@]}" build
-  "${COMPOSE[@]}" up -d --remove-orphans
+  "${COMPOSE[@]}" build || return 1
+  "${COMPOSE[@]}" up -d --remove-orphans || return 1
+  reload_standalone_web || return 1
   if health_ok; then
     ok "Rollback succeeded; deployment is healthy again at commit $OLD_SHA."
     return 0
@@ -141,7 +153,12 @@ rollback() {
   return 1
 }
 
-update_containers
+if ! update_containers; then
+  "${COMPOSE[@]}" logs --tail=160 || true
+  rollback || die 'Update failed and automatic recovery could not prove a healthy deployment.'
+  exit 1
+fi
+
 if ! health_ok; then
   "${COMPOSE[@]}" logs --tail=160 || true
   rollback || die 'Update failed and automatic recovery could not prove a healthy deployment.'
