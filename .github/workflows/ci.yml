@@ -67,13 +67,16 @@ jobs:
           grep -q 'libretro-thumbnails' backend/metadata-worker.js
           grep -q 'touch-device' public/game.js
           grep -q 'player-fullscreen' public/game.js
-          grep -q 'startMobilePlay' public/game.js
+          grep -q 'toggleFullscreen' public/game.js
+          grep -q 'player-fullscreen-fallback' public/game.js
           grep -q 'EJS_VirtualGamepadSettings' public/game.js
           grep -q 'EJS_CacheLimit' public/game.js
-          grep -q 'id="mobileMode"' public/game.html
-          grep -q 'id="mobileExit"' public/game.html
+          ! grep -q 'id="mobileMode"' public/game.html
+          ! grep -q 'id="mobileExit"' public/game.html
+          ! grep -q 'id="launchGuide"' public/game.html
+          ! grep -q 'Подождите' public/game.html
           grep -Eq 'pointer:[[:space:]]*coarse' public/styles-mobile-player.css
-          grep -q 'mobile-playing' public/styles-mobile-player.css
+          grep -q 'player-fullscreen-fallback' public/styles-mobile-player.css
           grep -q 'game-frame:fullscreen' public/styles-mobile-player.css
           grep -q 'viewport-fit=cover' public/game.html
           grep -q 'romBytes' backend/server.js

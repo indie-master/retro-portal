@@ -4,20 +4,11 @@ const title = $('#gameTitle');
 const system = $('#gameSystem');
 const notice = $('#playerNotice');
 const frame = $('#gameFrame');
-const launchGuide = $('#launchGuide');
-const launchGuideEyebrow = $('#launchGuideEyebrow');
-const launchGuideTitle = $('#launchGuideTitle');
-const launchGuideText = $('#launchGuideText');
-const playButton = $('#playGame');
-const mobileModeButton = $('#mobileMode');
-const mobileExitButton = $('#mobileExit');
 const fullscreenButton = $('#fullscreenGame');
 const controlsButton = $('#controlsOpen');
 const touchLike = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 let game = null;
 let runtimeStarted = false;
-let nativeFullscreenSeen = false;
-let scrollYBeforePlay = 0;
 
 document.body.classList.toggle('touch-device', touchLike);
 $('#reloadGame')?.addEventListener('click', () => location.reload());
@@ -26,78 +17,58 @@ function fullscreenElement() {
   return document.fullscreenElement || document.webkitFullscreenElement || null;
 }
 
-function syncViewport() {
-  const height = Math.round(window.visualViewport?.height || window.innerHeight || 0);
-  if (height > 0) document.documentElement.style.setProperty('--player-vh', `${height}px`);
-  document.body.classList.toggle('player-portrait', window.innerHeight > window.innerWidth);
-}
-
-syncViewport();
-window.addEventListener('resize', syncViewport);
-window.addEventListener('orientationchange', syncViewport);
-window.visualViewport?.addEventListener('resize', syncViewport);
-
-async function enterNativeFullscreen() {
-  if (fullscreenElement()) return;
-  try {
-    if (frame.requestFullscreen) await frame.requestFullscreen({ navigationUI: 'hide' });
-    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
-  } catch {}
-}
-
-async function exitNativeFullscreen() {
-  try {
-    if (document.exitFullscreen && fullscreenElement()) await document.exitFullscreen();
-    else if (document.webkitExitFullscreen && fullscreenElement()) document.webkitExitFullscreen();
-  } catch {}
-}
-
 async function lockLandscape() {
   if (!touchLike) return;
   try { await screen.orientation?.lock?.('landscape'); } catch {}
 }
 
-function leaveMobileMode() {
-  document.body.classList.remove('mobile-playing');
+function unlockOrientation() {
   try { screen.orientation?.unlock?.(); } catch {}
-  try { window.scrollTo(0, scrollYBeforePlay); } catch {}
-  if (mobileModeButton) mobileModeButton.textContent = '▰ МОБИЛЬНЫЙ РЕЖИМ';
 }
 
-async function enterMobileMode() {
-  if (!document.body.classList.contains('mobile-playing')) scrollYBeforePlay = window.scrollY || 0;
-  document.body.classList.add('mobile-playing');
-  if (mobileModeButton) mobileModeButton.textContent = '⤢ ВЕРНУТЬСЯ НА СТРАНИЦУ';
-  syncViewport();
-  await enterNativeFullscreen();
-  await lockLandscape();
+function setFallbackFullscreen(active) {
+  document.body.classList.toggle('player-fullscreen-fallback', active);
+  syncFullscreenButton();
+  if (active) lockLandscape(); else unlockOrientation();
 }
 
-async function exitMobileMode() {
-  await exitNativeFullscreen();
-  leaveMobileMode();
+async function toggleFullscreen() {
+  if (document.body.classList.contains('player-fullscreen-fallback')) return setFallbackFullscreen(false);
+  if (fullscreenElement()) {
+    try {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch {}
+    return;
+  }
+  try {
+    if (frame.requestFullscreen) await frame.requestFullscreen({ navigationUI: 'hide' });
+    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+    else throw new Error('Fullscreen API unavailable');
+    await lockLandscape();
+  } catch {
+    setFallbackFullscreen(true);
+  }
 }
 
-function syncFullscreen() {
-  const fullscreen = Boolean(fullscreenElement());
-  if (fullscreenButton) fullscreenButton.textContent = fullscreen ? '⤢ ВЫЙТИ ИЗ ЭКРАНА' : '⛶ ПОЛНЫЙ ЭКРАН';
-  document.body.classList.toggle('player-fullscreen', fullscreen);
-  if (!fullscreen && nativeFullscreenSeen && document.body.classList.contains('mobile-playing')) leaveMobileMode();
-  nativeFullscreenSeen = fullscreen;
+function syncFullscreenButton() {
+  const active = Boolean(fullscreenElement()) || document.body.classList.contains('player-fullscreen-fallback');
+  if (fullscreenButton) fullscreenButton.textContent = active ? '⤢ ВЫЙТИ ИЗ ЭКРАНА' : '⛶ ПОЛНЫЙ ЭКРАН';
+  if (!active) unlockOrientation();
 }
 
-document.addEventListener('fullscreenchange', syncFullscreen);
-document.addEventListener('webkitfullscreenchange', syncFullscreen);
+fullscreenButton?.addEventListener('click', toggleFullscreen);
+controlsButton?.addEventListener('click', () => game && window.RetroControls?.open(game));
+document.addEventListener('fullscreenchange', syncFullscreenButton);
+document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && document.body.classList.contains('player-fullscreen-fallback')) setFallbackFullscreen(false);
+});
 
 function fail(message) {
   notice.hidden = false;
   notice.textContent = message;
   notice.classList.add('error');
-  launchGuide?.classList.remove('hidden');
-  launchGuide?.classList.add('error');
-  if (launchGuideEyebrow) launchGuideEyebrow.textContent = 'ОШИБКА ЗАПУСКА';
-  if (launchGuideTitle) launchGuideTitle.textContent = 'Игра не запустилась';
-  if (launchGuideText) launchGuideText.textContent = message;
 }
 
 function renderInfo(item) {
@@ -145,6 +116,7 @@ function psxTouchControls() {
 function startRuntime() {
   if (!game || runtimeStarted) return;
   runtimeStarted = true;
+  const mobilePlayStation = touchLike && isPlayStation(game);
   window.EJS_player = '#game';
   window.EJS_core = game.core;
   window.EJS_controlScheme = game.controlScheme || game.core;
@@ -158,36 +130,18 @@ function startRuntime() {
   window.EJS_fullscreenOnLoaded = false;
   window.EJS_language = 'ru-RU';
   window.EJS_disableAutoLang = true;
-  window.EJS_browserMode = touchLike ? 'mobile' : 'desktop';
   window.EJS_threads = false;
-  window.EJS_CacheLimit = touchLike && isPlayStation(game) ? 8 * 1024 * 1024 : 1024 * 1024 * 1024;
-  window.EJS_VirtualGamepadSettings = touchLike && isPlayStation(game) ? psxTouchControls() : undefined;
+  window.EJS_CacheLimit = mobilePlayStation ? 8 * 1024 * 1024 : 1024 * 1024 * 1024;
+  window.EJS_VirtualGamepadSettings = mobilePlayStation ? psxTouchControls() : undefined;
   window.EJS_color = '#d99a47';
   window.EJS_backgroundColor = '#05070a';
   window.EJS_Buttons = touchLike ? { fullscreen: false, screenRecord: false, exitEmulation: false } : { exitEmulation: false };
-  window.EJS_onGameStart = () => { launchGuide?.classList.add('hidden'); notice.hidden = true; };
-  launchGuide?.classList.add('hidden');
-  notice.textContent = isPlayStation(game) ? 'Загружаем образ PlayStation…' : 'Загружаем игру…';
+  window.EJS_onGameStart = () => { notice.hidden = true; };
   const script = document.createElement('script');
   script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
   script.onerror = () => { runtimeStarted = false; fail('Не удалось загрузить EmulatorJS CDN.'); };
   document.body.appendChild(script);
 }
-
-async function startMobilePlay() {
-  if (!game) return;
-  await enterMobileMode();
-  startRuntime();
-}
-
-playButton?.addEventListener('click', startMobilePlay);
-mobileModeButton?.addEventListener('click', () => document.body.classList.contains('mobile-playing') ? exitMobileMode() : startMobilePlay());
-mobileExitButton?.addEventListener('click', exitMobileMode);
-fullscreenButton?.addEventListener('click', () => {
-  if (touchLike) return document.body.classList.contains('mobile-playing') ? exitMobileMode() : startMobilePlay();
-  return fullscreenElement() ? exitNativeFullscreen() : enterNativeFullscreen();
-});
-controlsButton?.addEventListener('click', () => game && window.RetroControls?.open(game));
 
 fetch('catalog.json', { cache: 'no-store' })
   .then((response) => response.json())
@@ -198,20 +152,9 @@ fetch('catalog.json', { cache: 'no-store' })
     document.title = `${game.title} · Retro Portal`;
     system.textContent = `${game.system}${game.year ? ` · ${game.year}` : ''}${game.players ? ` · ${game.players}` : ''}`;
     renderInfo(game);
-    $('#controlPreview').innerHTML = (window.RetroControls?.preview?.(game) || []).map((item) => `<span><b>${item.action}</b><kbd>${item.key}</kbd></span>`).join('');
     if (!game.playable) return fail('Эта игра недоступна в demo.');
-    if (touchLike) {
-      launchGuideEyebrow.textContent = 'МОБИЛЬНЫЙ ЗАПУСК';
-      launchGuideTitle.textContent = 'Поверните телефон';
-      launchGuideText.textContent = 'После нажатия игра откроется поверх страницы и только тогда начнётся загрузка.';
-      playButton.disabled = false;
-      playButton.textContent = '▶ ИГРАТЬ В МОБИЛЬНОМ РЕЖИМЕ';
-      mobileModeButton.disabled = false;
-      notice.textContent = 'ROM пока не загружается. Поверните телефон и нажмите «Мобильный режим».';
-    } else startRuntime();
+    startRuntime();
   })
   .catch(() => fail('Не удалось загрузить demo-каталог.'));
 
-window.addEventListener('beforeunload', () => {
-  try { screen.orientation?.unlock?.(); } catch {}
-});
+window.addEventListener('beforeunload', unlockOrientation);
