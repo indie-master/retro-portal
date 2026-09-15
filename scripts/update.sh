@@ -59,11 +59,13 @@ if [[ "$MODE" == edge ]]; then
   ENV_FILE=.env.edge
   PORT_KEY=EDGE_PORT
   DEFAULT_PORT=8088
+  FRONTEND_SERVICE=edge
 else
   COMPOSE=(docker compose)
   ENV_FILE=.env
   PORT_KEY=PORT
   DEFAULT_PORT=8088
+  FRONTEND_SERVICE=web
 fi
 
 have docker || die 'Docker is required.'
@@ -106,11 +108,20 @@ if [[ "$MODE" == edge && ! -f emulatorjs/data/loader.js ]]; then
   ./scripts/install-emulatorjs.sh 4.2.3
 fi
 
+refresh_frontend() {
+  # Public files and Nginx config/templates are bind-mounted. Compose does not
+  # recreate a service merely because mounted file contents changed, so an
+  # ordinary `up -d` can leave the old Nginx process/config running after Git
+  # updates. Recreate only the frontend service; keep backend/state untouched.
+  "${COMPOSE[@]}" up -d --no-deps --force-recreate "$FRONTEND_SERVICE"
+}
+
 update_containers() {
   info "Updating $MODE containers..."
   "${COMPOSE[@]}" pull --ignore-buildable || true
   "${COMPOSE[@]}" build --pull
   "${COMPOSE[@]}" up -d --remove-orphans
+  refresh_frontend
 }
 
 health_ok() {
@@ -128,11 +139,14 @@ rollback() {
   git reset --hard "$OLD_SHA"
   if [[ "$MODE" == edge ]]; then
     COMPOSE=(docker compose --env-file .env.edge -f docker-compose.edge.yml)
+    FRONTEND_SERVICE=edge
   else
     COMPOSE=(docker compose)
+    FRONTEND_SERVICE=web
   fi
   "${COMPOSE[@]}" build
   "${COMPOSE[@]}" up -d --remove-orphans
+  refresh_frontend
   if health_ok; then
     ok "Rollback succeeded; deployment is healthy again at commit $OLD_SHA."
     return 0
