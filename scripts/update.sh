@@ -33,8 +33,9 @@ Options:
   --yes, -y   Skip confirmation.
   -h, --help
 
-The updater refuses tracked/untracked working-tree changes, uses ff-only Git updates and rolls code/containers
-back to the previous commit if the post-update local health check fails.
+The updater refuses tracked/untracked working-tree changes, uses ff-only Git updates, force-recreates the
+selected Compose deployment so bind-mounted configuration is remounted, and rolls code/containers back to
+the previous commit if the post-update local health check fails.
 TXT
 }
 
@@ -110,7 +111,7 @@ update_containers() {
   info "Updating $MODE containers..."
   "${COMPOSE[@]}" pull --ignore-buildable || true
   "${COMPOSE[@]}" build --pull
-  "${COMPOSE[@]}" up -d --remove-orphans
+  "${COMPOSE[@]}" up -d --remove-orphans --force-recreate
 }
 
 health_ok() {
@@ -132,7 +133,7 @@ rollback() {
     COMPOSE=(docker compose)
   fi
   "${COMPOSE[@]}" build
-  "${COMPOSE[@]}" up -d --remove-orphans
+  "${COMPOSE[@]}" up -d --remove-orphans --force-recreate
   if health_ok; then
     ok "Rollback succeeded; deployment is healthy again at commit $OLD_SHA."
     return 0
