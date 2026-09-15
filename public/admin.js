@@ -21,6 +21,9 @@ const biosProgress=document.querySelector('#biosProgress');
 const biosMessage=document.querySelector('#biosMessage');
 const scanButton=document.querySelector('#scanLibrary');
 const refreshButton=document.querySelector('#refreshAdmin');
+const platformFilter=document.querySelector('#platformFilter');
+const adminSearch=document.querySelector('#adminSearch');
+const adminSort=document.querySelector('#adminSort');
 
 let adminToken=sessionStorage.getItem('retroPortalAdminToken')||'';
 let adminStatus=null;
@@ -28,270 +31,62 @@ let adminGames=[];
 tokenInput.value=adminToken;
 
 const esc=(v='')=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const collator=new Intl.Collator('ru',{numeric:true,sensitivity:'base'});
+const COMPAT={
+  'Mega Drive':{preferred:['.gen','.md','.bin'],note:'GEN/MD/BIN — нативные форматы. ZIP работает только если разрешён владельцем.'},
+  'PlayStation':{preferred:['.chd','.pbp'],note:'CHD/PBP предпочтительны для браузера: меньше трафика и быстрее старт. BIN/ISO поддерживаются, многофайловые CUE лучше импортировать через SFTP + сканирование.'},
+  'Dreamcast':{preferred:['.chd','.cdi','.gdi'],note:'CHD — предпочтительный формат. Dreamcast остаётся experimental, пока отдельный Flycast WASM runtime не пройдёт интеграционные тесты.'},
+  'NES':{preferred:['.nes'],note:'NES ROM должен иметь корректный iNES/NES 2.0 header.'},
+  'SNES':{preferred:['.sfc','.smc'],note:'SFC/SMC поддерживаются штатно.'},
+  'Game Boy':{preferred:['.gb','.gbc'],note:'GB/GBC поддерживаются штатно.'},
+  'Game Boy Advance':{preferred:['.gba'],note:'GBA поддерживается штатно.'},
+  'Nintendo 64':{preferred:['.z64','.n64','.v64'],note:'Z64 предпочтителен; N64/V64 также распознаются.'},
+  'Arcade':{preferred:['.zip'],note:'Arcade-наборы зависят от версии romset/core; ZIP не распаковывается сервером.'}
+};
 
-function humanBytes(value){
-  const n=Number(value)||0;
-  if(n<1024)return`${n} B`;
-  if(n<1024**2)return`${(n/1024).toFixed(1)} KB`;
-  if(n<1024**3)return`${(n/1024**2).toFixed(1)} MB`;
-  return`${(n/1024**3).toFixed(2)} GB`;
-}
-
+function humanBytes(value){const n=Number(value)||0;if(n<1024)return`${n} B`;if(n<1024**2)return`${(n/1024).toFixed(1)} KB`;if(n<1024**3)return`${(n/1024**2).toFixed(1)} MB`;return`${(n/1024**3).toFixed(2)} GB`}
 function authHeaders(extra={}){return{Authorization:`Bearer ${adminToken}`,...extra}}
+async function api(path,options={}){const response=await fetch(path,{...options,headers:{...authHeaders(),...(options.headers||{})},cache:'no-store'});let body={};try{body=await response.json()}catch{}if(!response.ok){const e=new Error(body.message||body.error||`HTTP ${response.status}`);e.status=response.status;e.body=body;throw e}return body}
 
-async function api(path,options={}){
-  const response=await fetch(path,{...options,headers:{...authHeaders(),...(options.headers||{})},cache:'no-store'});
-  let body={};
-  try{body=await response.json()}catch{}
-  if(!response.ok){
-    const e=new Error(body.message||body.error||`HTTP ${response.status}`);
-    e.status=response.status;
-    e.body=body;
-    throw e;
-  }
-  return body;
-}
+function statusLabel(game){if(game.playable)return['ready','ГОТОВО'];if(game.experimental)return['experimental','EXPERIMENTAL'];if(!game.installed)return['missing','НЕТ ROM'];if(game.biosRequired&&!game.biosInstalled)return['bios','НУЖЕН BIOS'];return['missing','НЕ ГОТОВО']}
+function renderSummary(){if(!adminStatus)return;const s=adminStatus.summary||{};summary.innerHTML=`<article><strong>${s.ready||0}</strong><span>готово к игре</span></article><article><strong>${s.missingBios||0}</strong><span>ждут BIOS</span></article><article><strong>${s.pendingMetadata||0}</strong><span>описаний на проверке</span></article><article><strong>${adminStatus.metadataProvider?'ON':'ON*'}</strong><span>авто-метаданные</span></article>`}
+function renderSecurity(){const s=adminStatus?.security||{};securityPanel.innerHTML=`<div class="panel-heading"><div><p class="eyebrow">БЕЗОПАСНОСТЬ</p><h2>Режим библиотеки</h2></div><span class="game-state ready">HARDENED</span></div><div class="security-grid"><span>✓ загрузка ROM/BIOS только администратором</span><span>✓ ROM не исполняется на сервере</span><span>✓ загрузки ограничены форматом и размером</span><span>✓ ZIP upload: ${s.zipUploads?'включён':'выключен'}</span><span>✓ обложки проверяются как JPG / PNG / WebP</span><span>✓ BIOS не скачиваются автоматически из непроверенных источников</span></div>`}
 
-function statusLabel(game){
-  if(game.playable)return['ready','ГОТОВО'];
-  if(game.experimental)return['experimental','EXPERIMENTAL'];
-  if(!game.installed)return['missing','НЕТ ROM'];
-  if(game.biosRequired&&!game.biosInstalled)return['bios','НУЖЕН BIOS'];
-  return['missing','НЕ ГОТОВО'];
-}
+function proposalHtml(game){const p=game.pendingMetadata;if(!p)return'';return`<div class="metadata-proposal"><div class="proposal-head"><strong>Предложение метаданных</strong><span>${esc((p.sources||[]).join(' + ')||'автоматически')}</span></div><p><b>${esc(p.title||game.title)}</b>${p.year?` · ${esc(p.year)}`:''}</p>${p.description?`<p>${esc(p.description)}</p>`:''}${p.history?`<p class="history-preview"><b>История:</b> ${esc(p.history)}</p>`:''}<div class="proposal-actions"><button class="tiny-button approve" data-approve="${esc(game.id)}">✓ ПРИНЯТЬ</button><button class="tiny-button" data-reject="${esc(game.id)}">ОТКЛОНИТЬ</button></div></div>`}
 
-function renderSummary(){
-  if(!adminStatus)return;
-  const s=adminStatus.summary||{};
-  summary.innerHTML=`<article><strong>${s.ready||0}</strong><span>готово к игре</span></article><article><strong>${s.missingBios||0}</strong><span>ждут BIOS</span></article><article><strong>${s.pendingMetadata||0}</strong><span>описаний на проверке</span></article><article><strong>${adminStatus.metadataProvider?'ON':'OFF'}</strong><span>авто-метаданные</span></article>`;
-}
+function compatibilityHtml(game){const cfg=COMPAT[game.system]||{};const ext=((game.romExpected||game.rom||'').match(/\.[^.]+$/)||[''])[0].toLowerCase();const preferred=(cfg.preferred||[]).includes(ext);const cls=game.experimental?'experimental':preferred?'ready':'missing';const label=game.experimental?'RUNTIME НЕ ГОТОВ':preferred?'ФОРМАТ ОК':'ПРОВЕРИТЬ ФОРМАТ';return`<div class="compat-row"><span class="game-state ${cls}">${label}</span><span>${esc(cfg.note||'Проверьте совместимость выбранного ROM с core платформы.')}</span></div>`}
 
-function renderSecurity(){
-  const s=adminStatus?.security||{};
-  securityPanel.innerHTML=`<div class="panel-heading"><div><p class="eyebrow">БЕЗОПАСНОСТЬ</p><h2>Режим загрузок</h2></div><span class="game-state ready">HARDENED</span></div><div class="security-grid"><span>✓ ROM загружает только администратор</span><span>✓ ROM не исполняется на сервере</span><span>✓ метаданные проходят подтверждение</span><span>✓ ZIP upload: ${s.zipUploads?'включён':'выключен'}</span><span>✓ обложки проверяются как JPG / PNG / WebP</span><span>✓ онлайн считается по уникальным браузерным сессиям</span></div>`;
-}
+function editorHtml(game){const coverPreview=game.cover?`<img src="${esc(game.cover)}" alt="Обложка ${esc(game.title)}" width="90" height="120" loading="lazy" class="admin-cover-preview">`:'<span class="admin-muted">Обложка пока не добавлена.</span>';return`<details class="game-editor"><summary>Редактировать карточку</summary><div class="editor-grid"><label>Название<input data-field="title" value="${esc(game.title)}"></label><label>Год<input data-field="year" value="${esc(game.year||'')}"></label><label>Игроки<input data-field="players" value="${esc(game.players||'')}"></label><label>Сортировка<input data-field="sort" type="number" value="${Number(game.sort)||5000}"></label></div><label>Краткое описание<textarea data-field="description" rows="4">${esc(game.description||'')}</textarea></label><label>История игры<textarea data-field="history" rows="5">${esc(game.history||'')}</textarea></label><div class="cover-editor"><div>${coverPreview}</div><div><label>Обложка JPG / PNG / WebP, до 8 MB<input data-cover-file type="file" accept="image/jpeg,image/png,image/webp"></label><div class="inline-actions"><button class="tiny-button" data-cover-upload="${esc(game.id)}" type="button">ЗАГРУЗИТЬ ОБЛОЖКУ</button><span class="admin-muted" data-cover-message></span></div></div></div><div class="editor-flags"><label><input data-field="featured" type="checkbox" ${game.featured?'checked':''}> Избранное</label><label><input data-field="public" type="checkbox" ${game.publicVisible||game.public!==false?'checked':''}> Публиковать после готовности</label></div><div class="editor-bottom-actions"><button class="tiny-button approve" data-save="${esc(game.id)}">СОХРАНИТЬ КАРТОЧКУ</button><button class="tiny-button danger" data-delete="${esc(game.id)}" data-title="${esc(game.title)}">УДАЛИТЬ ИЗ БИБЛИОТЕКИ</button></div></details>`}
 
-function proposalHtml(game){
-  const p=game.pendingMetadata;
-  if(!p)return'';
-  return`<div class="metadata-proposal"><div class="proposal-head"><strong>Предложение метаданных</strong><span>${esc((p.sources||[]).join(' + ')||'автоматически')}</span></div><p><b>${esc(p.title||game.title)}</b>${p.year?` · ${esc(p.year)}`:''}</p>${p.description?`<p>${esc(p.description)}</p>`:''}${p.history?`<p class="history-preview"><b>История:</b> ${esc(p.history)}</p>`:''}<div class="proposal-actions"><button class="tiny-button approve" data-approve="${esc(game.id)}">✓ ПРИНЯТЬ</button><button class="tiny-button" data-reject="${esc(game.id)}">ОТКЛОНИТЬ</button></div></div>`;
-}
+function rebuildPlatformFilter(){const current=platformFilter.value||'all';const systems=[...new Set(adminGames.map(g=>g.system).filter(Boolean))].sort(collator.compare);platformFilter.innerHTML='<option value="all">Все платформы</option>'+systems.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');platformFilter.value=systems.includes(current)?current:'all'}
+function filteredGames(){const platform=platformFilter.value||'all';const query=(adminSearch.value||'').trim().toLowerCase();let list=adminGames.filter(game=>(platform==='all'||game.system===platform)&&(!query||`${game.title} ${game.romExpected||game.rom||''}`.toLowerCase().includes(query)));const statusOrder={ready:0,'bios-missing':1,'rom-missing':2,experimental:3};if(adminSort.value==='title')list.sort((a,b)=>collator.compare(a.title||'',b.title||''));else if(adminSort.value==='status')list.sort((a,b)=>(statusOrder[a.status]??9)-(statusOrder[b.status]??9)||collator.compare(a.system||'',b.system||'')||collator.compare(a.title||'',b.title||''));else list.sort((a,b)=>collator.compare(a.system||'',b.system||'')||collator.compare(a.title||'',b.title||''));return list}
 
-function editorHtml(game){
-  const coverPreview=game.cover
-    ?`<img src="${esc(game.cover)}" alt="Обложка ${esc(game.title)}" width="90" height="120" loading="lazy" style="object-fit:cover;border-radius:7px;border:1px solid #35515e;background:#07161e">`
-    :'<span class="admin-muted">Обложка пока не добавлена.</span>';
-  return`<details class="game-editor"><summary>Редактировать карточку</summary><div class="editor-grid"><label>Название<input data-field="title" value="${esc(game.title)}"></label><label>Год<input data-field="year" value="${esc(game.year||'')}"></label><label>Игроки<input data-field="players" value="${esc(game.players||'')}"></label><label>Сортировка<input data-field="sort" type="number" value="${Number(game.sort)||5000}"></label></div><label>Краткое описание<textarea data-field="description" rows="4">${esc(game.description||'')}</textarea></label><label>История игры<textarea data-field="history" rows="5">${esc(game.history||'')}</textarea></label><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px"><div>${coverPreview}</div><div style="flex:1;min-width:240px"><label>Обложка JPG / PNG / WebP, до 8 MB<input data-cover-file type="file" accept="image/jpeg,image/png,image/webp"></label><div style="display:flex;gap:10px;align-items:center;margin-top:9px"><button class="tiny-button" data-cover-upload="${esc(game.id)}" type="button">ЗАГРУЗИТЬ ОБЛОЖКУ</button><span class="admin-muted" data-cover-message></span></div></div></div><div class="editor-flags"><label><input data-field="featured" type="checkbox" ${game.featured?'checked':''}> Избранное</label><label><input data-field="public" type="checkbox" ${game.publicVisible||game.public!==false?'checked':''}> Публиковать после готовности</label></div><button class="tiny-button approve" data-save="${esc(game.id)}">СОХРАНИТЬ КАРТОЧКУ</button></details>`;
-}
+function renderGames(){const sorted=filteredGames();gamesEl.innerHTML=sorted.map(game=>{const[labelClass,label]=statusLabel(game);const bios=(game.missingBios||[]).map(x=>`<code>games/bios/${esc(x)}</code>`).join('');const rom=`games/roms/${esc(game.romExpected||game.rom||'')}`;return`<article class="admin-game" data-game-id="${esc(game.id)}"><div class="admin-game-main"><div class="game-state ${labelClass}">${label}</div><div><small>${esc(game.system)}</small><h3>${esc(game.title)}</h3><p>${esc(game.year||'')}${game.players?` · ${esc(game.players)}`:''}</p></div></div><div class="admin-paths"><span>ROM</span><code>${rom}</code>${bios?`<span>НУЖНО</span>${bios}`:''}</div><div class="admin-game-actions"><span>metadata: ${esc(game.metadataSource||'—')}</span><button class="tiny-button" data-propose="${esc(game.id)}">↻ МЕТАДАННЫЕ</button></div>${compatibilityHtml(game)}${proposalHtml(game)}${editorHtml(game)}</article>`}).join('')||'<div class="admin-empty">По этому фильтру игр нет.</div>';bindGameActions()}
 
-function renderGames(){
-  const sorted=[...adminGames].sort((a,b)=>{
-    const order={ready:0,'bios-missing':1,'rom-missing':2,experimental:3};
-    return(order[a.status]??9)-(order[b.status]??9)||(a.system||'').localeCompare(b.system||'')||(a.title||'').localeCompare(b.title||'');
-  });
-  gamesEl.innerHTML=sorted.map(game=>{
-    const[labelClass,label]=statusLabel(game);
-    const bios=(game.missingBios||[]).map(x=>`<code>games/bios/${esc(x)}</code>`).join('');
-    const rom=`games/roms/${esc(game.romExpected||game.rom||'')}`;
-    return`<article class="admin-game" data-game-id="${esc(game.id)}"><div class="admin-game-main"><div class="game-state ${labelClass}">${label}</div><div><small>${esc(game.system)}</small><h3>${esc(game.title)}</h3><p>${esc(game.year||'')}${game.players?` · ${esc(game.players)}`:''}</p></div></div><div class="admin-paths"><span>ROM</span><code>${rom}</code>${bios?`<span>НУЖНО</span>${bios}`:''}</div><div class="admin-game-actions"><span>metadata: ${esc(game.metadataSource||'—')}</span><button class="tiny-button" data-propose="${esc(game.id)}">↻ ПОДОБРАТЬ ОПИСАНИЕ</button></div>${proposalHtml(game)}${editorHtml(game)}</article>`;
-  }).join('')||'<div class="admin-empty">Каталог пока пуст.</div>';
-  bindGameActions();
-}
+function bindGameActions(){gamesEl.querySelectorAll('[data-propose]').forEach(b=>b.onclick=()=>metadataAction('propose',b.dataset.propose,b));gamesEl.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>metadataAction('approve',b.dataset.approve,b));gamesEl.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>metadataAction('reject',b.dataset.reject,b));gamesEl.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>saveCard(b.dataset.save,b));gamesEl.querySelectorAll('[data-cover-upload]').forEach(b=>b.onclick=()=>uploadCoverForGame(b.dataset.coverUpload,b));gamesEl.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteGame(b.dataset.delete,b.dataset.title,b))}
 
-function bindGameActions(){
-  gamesEl.querySelectorAll('[data-propose]').forEach(b=>b.onclick=()=>metadataAction('propose',b.dataset.propose,b));
-  gamesEl.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>metadataAction('approve',b.dataset.approve,b));
-  gamesEl.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>metadataAction('reject',b.dataset.reject,b));
-  gamesEl.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>saveCard(b.dataset.save,b));
-  gamesEl.querySelectorAll('[data-cover-upload]').forEach(b=>b.onclick=()=>uploadCoverForGame(b.dataset.coverUpload,b));
-}
+async function refresh(){notice.textContent='Проверяем библиотеку…';try{[adminStatus,{games:adminGames}]=await Promise.all([api('/api/admin/status'),api('/api/admin/games')]);renderSummary();renderSecurity();rebuildPlatformFilter();renderGames();notice.textContent=`BIOS на сервере: ${(adminStatus.bios||[]).join(', ')||'пока нет'} · Автообогащение обложек/описаний работает фоново.`;app.hidden=false;authMessage.textContent='Подключено. Все операции доступны из этого кабинета.'}catch(error){app.hidden=true;authMessage.textContent=error.status===401?'Неверный ADMIN_TOKEN.':error.status===429?'Слишком много неудачных попыток. Подождите 15 минут.':error.message;throw error}}
+connectButton.onclick=async()=>{adminToken=tokenInput.value.trim();if(!adminToken){authMessage.textContent='Введите ADMIN_TOKEN.';return}sessionStorage.setItem('retroPortalAdminToken',adminToken);try{await refresh()}catch{}};
 
-async function refresh(){
-  notice.textContent='Проверяем библиотеку…';
-  try{
-    [adminStatus,{games:adminGames}]=await Promise.all([api('/api/admin/status'),api('/api/admin/games')]);
-    renderSummary();
-    renderSecurity();
-    renderGames();
-    notice.textContent=`BIOS на сервере: ${(adminStatus.bios||[]).join(', ')||'пока нет'}`;
-    app.hidden=false;
-    authMessage.textContent='Подключено. Все операции доступны из этого кабинета.';
-  }catch(error){
-    app.hidden=true;
-    authMessage.textContent=error.status===401?'Неверный ADMIN_TOKEN.':error.status===429?'Слишком много неудачных попыток. Подождите 15 минут.':error.message;
-    throw error;
-  }
-}
+function inferSystem(name){const ext=(name.match(/\.[^.]+$/)||[''])[0].toLowerCase();return({'.nes':'nes','.sfc':'snes','.smc':'snes','.gb':'gb','.gbc':'gb','.gba':'gba','.md':'megadrive','.gen':'megadrive','.z64':'n64','.n64':'n64','.v64':'n64','.gdi':'dreamcast','.cdi':'dreamcast'})[ext]||'auto'}
+function bindDrop(input,label){const drop=input.closest('.admin-drop');const show=file=>{label.textContent=file?`${file.name} · ${humanBytes(file.size)}`:'Выберите файл'};input.onchange=()=>show(input.files[0]);['dragover','dragenter'].forEach(n=>drop.addEventListener(n,e=>{e.preventDefault();drop.classList.add('dragging')}));['dragleave','drop'].forEach(n=>drop.addEventListener(n,e=>{e.preventDefault();drop.classList.remove('dragging')}));drop.addEventListener('drop',e=>{const file=e.dataTransfer.files[0];if(!file)return;const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;show(file);input.dispatchEvent(new Event('change'))})}
+bindDrop(romFile,romFileName);bindDrop(biosFile,biosFileName);
+romFile.addEventListener('change',()=>{const file=romFile.files[0];uploadRom.disabled=!file;if(file&&romSystem.value==='auto'){const inferred=inferSystem(file.name);if(inferred!=='auto')romSystem.value=inferred}romMessage.textContent=''});
+biosFile.addEventListener('change',()=>{uploadBios.disabled=!biosFile.files[0];biosMessage.textContent=''});biosSystem.addEventListener('change',()=>{if(biosSystem.value==='ps1'&&biosTarget.value.startsWith('dc_'))biosTarget.value='';if(biosSystem.value==='dreamcast'&&biosTarget.value.startsWith('scph'))biosTarget.value=''});
 
-connectButton.onclick=async()=>{
-  adminToken=tokenInput.value.trim();
-  if(!adminToken){authMessage.textContent='Введите ADMIN_TOKEN.';return}
-  sessionStorage.setItem('retroPortalAdminToken',adminToken);
-  try{await refresh()}catch{}
-};
+function rawUpload(url,file,headers,progressEl=null){return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open('POST',url);xhr.setRequestHeader('Authorization',`Bearer ${adminToken}`);Object.entries(headers).forEach(([key,value])=>value&&xhr.setRequestHeader(key,value));xhr.upload.onprogress=e=>{if(progressEl&&e.lengthComputable)progressEl.style.width=`${Math.round(e.loaded/e.total*100)}%`};xhr.onload=()=>{let body={};try{body=JSON.parse(xhr.responseText)}catch{}if(xhr.status>=200&&xhr.status<300){if(progressEl)progressEl.style.width='100%';resolve(body)}else{const err=new Error(body.error||`HTTP ${xhr.status}`);err.status=xhr.status;err.body=body;reject(err)}};xhr.onerror=()=>reject(new Error('Ошибка сети'));xhr.send(file)})}
 
-function inferSystem(name){
-  const ext=(name.match(/\.[^.]+$/)||[''])[0].toLowerCase();
-  return({'.nes':'nes','.sfc':'snes','.smc':'snes','.gb':'gb','.gbc':'gb','.gba':'gba','.md':'megadrive','.gen':'megadrive','.z64':'n64','.n64':'n64','.v64':'n64','.gdi':'dreamcast','.cdi':'dreamcast'})[ext]||'auto';
-}
+uploadRom.onclick=async()=>{const file=romFile.files[0];if(!file)return;uploadRom.disabled=true;romProgress.style.width='0';romMessage.textContent='Загружаем и проверяем файл…';try{const result=await rawUpload('/api/admin/upload/rom',file,{'X-File-Name':encodeURIComponent(file.name),'X-System':romSystem.value},romProgress);const game=result.game;romMessage.textContent=game.playable?`${game.title}: готово.`:game.biosRequired&&!game.biosInstalled?`${game.title}: ROM принят. Для запуска нужен BIOS: ${(game.missingBios||[]).join(', ')}`:game.experimental?`${game.title}: ROM принят, но runtime этой платформы пока experimental.`:`${game.title}: ROM принят.`;await refresh()}catch(error){const map={'zip-roms-disabled':'ZIP загрузка отключена. Используйте распакованный ROM или включите ALLOW_ZIP_ROMS осознанно.','multi-file-format-use-sftp-scan':'Многофайловый образ скопируйте через SFTP/SCP и затем запустите сканирование.','file-signature-mismatch':'Сигнатура файла не соответствует выбранному формату. Загрузка отклонена.'};romMessage.textContent=error.body?.needsSystem?'Для этого формата выберите платформу вручную.':(map[error.message]||error.message)}finally{uploadRom.disabled=false}};
+uploadBios.onclick=async()=>{const file=biosFile.files[0];if(!file)return;uploadBios.disabled=true;biosProgress.style.width='0';biosMessage.textContent='Проверяем BIOS…';try{const result=await rawUpload('/api/admin/upload/bios',file,{'X-File-Name':encodeURIComponent(file.name),'X-System':biosSystem.value,'X-Bios-Name':biosTarget.value},biosProgress);biosMessage.textContent=`BIOS проверен и принят: ${result.storedAs}`;await refresh()}catch(error){biosMessage.textContent=error.message==='bios-not-recognized'?'BIOS не распознан и не был сохранён. Проверьте dump.':error.message}finally{uploadBios.disabled=false}};
 
-function bindDrop(input,label){
-  const drop=input.closest('.admin-drop');
-  const show=file=>{label.textContent=file?`${file.name} · ${humanBytes(file.size)}`:'Выберите файл'};
-  input.onchange=()=>show(input.files[0]);
-  ['dragover','dragenter'].forEach(n=>drop.addEventListener(n,e=>{e.preventDefault();drop.classList.add('dragging')}));
-  ['dragleave','drop'].forEach(n=>drop.addEventListener(n,e=>{e.preventDefault();drop.classList.remove('dragging')}));
-  drop.addEventListener('drop',e=>{
-    const file=e.dataTransfer.files[0];
-    if(!file)return;
-    const dt=new DataTransfer();
-    dt.items.add(file);
-    input.files=dt.files;
-    show(file);
-    input.dispatchEvent(new Event('change'));
-  });
-}
+async function uploadCoverForGame(id,button){const card=button.closest('[data-game-id]');const input=card.querySelector('[data-cover-file]');const message=card.querySelector('[data-cover-message]');const file=input?.files?.[0];if(!file){message.textContent='Сначала выберите изображение.';return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){message.textContent='Поддерживаются JPG, PNG и WebP.';return}if(file.size>8*1024*1024){message.textContent='Обложка должна быть не больше 8 MB.';return}button.disabled=true;const old=button.textContent;button.textContent='ЗАГРУЖАЕМ…';message.textContent='Проверяем изображение…';try{await rawUpload(`/api/admin/upload/cover/${encodeURIComponent(id)}`,file,{'X-File-Name':encodeURIComponent(file.name)});message.textContent='Обложка сохранена.';await refresh()}catch(error){const map={'cover-unsupported-format':'Поддерживаются только JPG, PNG и WebP.','cover-invalid':'Файл не похож на корректное изображение.','cover-too-large':'Обложка должна быть не больше 8 MB.','game-not-found':'Игра не найдена.'};message.textContent=map[error.message]||error.message}finally{button.disabled=false;button.textContent=old}}
 
-bindDrop(romFile,romFileName);
-bindDrop(biosFile,biosFileName);
-
-romFile.addEventListener('change',()=>{
-  const file=romFile.files[0];
-  uploadRom.disabled=!file;
-  if(file&&romSystem.value==='auto'){
-    const inferred=inferSystem(file.name);
-    if(inferred!=='auto')romSystem.value=inferred;
-  }
-  romMessage.textContent='';
-});
-
-biosFile.addEventListener('change',()=>{uploadBios.disabled=!biosFile.files[0];biosMessage.textContent=''});
-biosSystem.addEventListener('change',()=>{
-  if(biosSystem.value==='ps1'&&biosTarget.value.startsWith('dc_'))biosTarget.value='';
-  if(biosSystem.value==='dreamcast'&&biosTarget.value.startsWith('scph'))biosTarget.value='';
-});
-
-function rawUpload(url,file,headers,progressEl=null){
-  return new Promise((resolve,reject)=>{
-    const xhr=new XMLHttpRequest();
-    xhr.open('POST',url);
-    xhr.setRequestHeader('Authorization',`Bearer ${adminToken}`);
-    Object.entries(headers).forEach(([key,value])=>value&&xhr.setRequestHeader(key,value));
-    xhr.upload.onprogress=e=>{
-      if(progressEl&&e.lengthComputable)progressEl.style.width=`${Math.round(e.loaded/e.total*100)}%`;
-    };
-    xhr.onload=()=>{
-      let body={};
-      try{body=JSON.parse(xhr.responseText)}catch{}
-      if(xhr.status>=200&&xhr.status<300){
-        if(progressEl)progressEl.style.width='100%';
-        resolve(body);
-      }else{
-        const err=new Error(body.error||`HTTP ${xhr.status}`);
-        err.status=xhr.status;
-        err.body=body;
-        reject(err);
-      }
-    };
-    xhr.onerror=()=>reject(new Error('Ошибка сети'));
-    xhr.send(file);
-  });
-}
-
-uploadRom.onclick=async()=>{
-  const file=romFile.files[0];
-  if(!file)return;
-  uploadRom.disabled=true;
-  romProgress.style.width='0';
-  romMessage.textContent='Загружаем и проверяем файл…';
-  try{
-    const result=await rawUpload('/api/admin/upload/rom',file,{'X-File-Name':encodeURIComponent(file.name),'X-System':romSystem.value},romProgress);
-    const game=result.game;
-    romMessage.textContent=game.playable?`${game.title}: готово. ${result.proposal?'Описание подготовлено и ждёт подтверждения ниже.':''}`:game.biosRequired&&!game.biosInstalled?`${game.title}: ROM принят. Для запуска нужен BIOS: ${(game.missingBios||[]).join(', ')}`:game.experimental?`${game.title}: ROM принят, система пока experimental.`:`${game.title}: ROM принят.`;
-    await refresh();
-  }catch(error){
-    const map={'zip-roms-disabled':'ZIP загрузка по умолчанию отключена из соображений безопасности. Используйте распакованный ROM или включите ALLOW_ZIP_ROMS осознанно.','multi-file-format-use-sftp-scan':'Многофайловый образ лучше скопировать через SFTP/SCP и затем запустить сканирование.','file-signature-mismatch':'Сигнатура файла не соответствует выбранному формату. Загрузка отклонена.'};
-    romMessage.textContent=error.body?.needsSystem?'Для этого формата выберите платформу вручную.':(map[error.message]||error.message);
-  }finally{uploadRom.disabled=false}
-};
-
-uploadBios.onclick=async()=>{
-  const file=biosFile.files[0];
-  if(!file)return;
-  uploadBios.disabled=true;
-  biosProgress.style.width='0';
-  biosMessage.textContent='Проверяем BIOS…';
-  try{
-    const result=await rawUpload('/api/admin/upload/bios',file,{'X-File-Name':encodeURIComponent(file.name),'X-System':biosSystem.value,'X-Bios-Name':biosTarget.value},biosProgress);
-    biosMessage.textContent=`BIOS проверен и принят: ${result.storedAs}`;
-    await refresh();
-  }catch(error){
-    biosMessage.textContent=error.message==='bios-not-recognized'?'BIOS не распознан и не был сохранён. Проверьте образ.':error.message;
-  }finally{uploadBios.disabled=false}
-};
-
-async function uploadCoverForGame(id,button){
-  const card=button.closest('[data-game-id]');
-  const input=card.querySelector('[data-cover-file]');
-  const message=card.querySelector('[data-cover-message]');
-  const file=input?.files?.[0];
-  if(!file){message.textContent='Сначала выберите изображение.';return}
-  if(!['image/jpeg','image/png','image/webp'].includes(file.type)){message.textContent='Поддерживаются JPG, PNG и WebP.';return}
-  if(file.size>8*1024*1024){message.textContent='Обложка должна быть не больше 8 MB.';return}
-  button.disabled=true;
-  const old=button.textContent;
-  button.textContent='ЗАГРУЖАЕМ…';
-  message.textContent='Проверяем изображение…';
-  try{
-    await rawUpload(`/api/admin/upload/cover/${encodeURIComponent(id)}`,file,{'X-File-Name':encodeURIComponent(file.name)});
-    message.textContent='Обложка сохранена.';
-    await refresh();
-  }catch(error){
-    const map={'cover-unsupported-format':'Поддерживаются только JPG, PNG и WebP.','cover-invalid':'Файл не похож на корректное изображение.','cover-too-large':'Обложка должна быть не больше 8 MB.','game-not-found':'Игра не найдена.'};
-    message.textContent=map[error.message]||error.message;
-  }finally{
-    button.disabled=false;
-    button.textContent=old;
-  }
-}
-
-scanButton.onclick=async()=>{
-  scanButton.disabled=true;
-  notice.textContent='Сканируем папки ROM…';
-  try{
-    const result=await api('/api/admin/scan',{method:'POST'});
-    notice.textContent=result.imported.length?`Добавлено игр: ${result.imported.length}. Для новых карточек можно запустить автоописание.`:'Новых ROM не найдено.';
-    await refresh();
-  }catch(error){notice.textContent=error.message}
-  finally{scanButton.disabled=false}
-};
-
+scanButton.onclick=async()=>{scanButton.disabled=true;notice.textContent='Сканируем папки ROM…';try{const result=await api('/api/admin/scan',{method:'POST'});notice.textContent=result.imported.length?`Добавлено игр: ${result.imported.length}. Авто-метаданные подхватят пустые карточки фоново.`:'Новых ROM не найдено.';await refresh()}catch(error){notice.textContent=error.message}finally{scanButton.disabled=false}};
 refreshButton.onclick=()=>refresh().catch(()=>{});
+[platformFilter,adminSearch,adminSort].forEach(el=>el?.addEventListener(el===adminSearch?'input':'change',renderGames));
 
-async function metadataAction(action,id,button){
-  button.disabled=true;
-  const old=button.textContent;
-  button.textContent=action==='propose'?'ИЩЕМ…':action==='approve'?'ПРИНИМАЕМ…':'ОТКЛОНЯЕМ…';
-  try{await api(`/api/admin/metadata/${action}/${encodeURIComponent(id)}`,{method:'POST'});await refresh()}
-  catch(error){notice.textContent=`Метаданные: ${error.message}`}
-  finally{button.disabled=false;button.textContent=old}
-}
-
-async function saveCard(id,button){
-  const card=button.closest('[data-game-id]');
-  const body={};
-  card.querySelectorAll('[data-field]').forEach(el=>{
-    if(el.type==='checkbox')body[el.dataset.field]=el.checked;
-    else body[el.dataset.field]=el.value;
-  });
-  button.disabled=true;
-  button.textContent='СОХРАНЯЕМ…';
-  try{
-    await api(`/api/admin/games/${encodeURIComponent(id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    notice.textContent='Карточка сохранена.';
-    await refresh();
-  }catch(error){notice.textContent=`Сохранение: ${error.message}`}
-  finally{button.disabled=false;button.textContent='СОХРАНИТЬ КАРТОЧКУ'}
-}
+async function metadataAction(action,id,button){button.disabled=true;const old=button.textContent;button.textContent=action==='propose'?'ИЩЕМ…':action==='approve'?'ПРИНИМАЕМ…':'ОТКЛОНЯЕМ…';try{await api(`/api/admin/metadata/${action}/${encodeURIComponent(id)}`,{method:'POST'});await refresh()}catch(error){notice.textContent=`Метаданные: ${error.message}`}finally{button.disabled=false;button.textContent=old}}
+async function saveCard(id,button){const card=button.closest('[data-game-id]');const body={};card.querySelectorAll('[data-field]').forEach(el=>{body[el.dataset.field]=el.type==='checkbox'?el.checked:el.value});button.disabled=true;button.textContent='СОХРАНЯЕМ…';try{await api(`/api/admin/games/${encodeURIComponent(id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});notice.textContent='Карточка сохранена.';await refresh()}catch(error){notice.textContent=`Сохранение: ${error.message}`}finally{button.disabled=false;button.textContent='СОХРАНИТЬ КАРТОЧКУ'}}
+async function deleteGame(id,title,button){const purge=confirm(`Удалить «${title}» из каталога?\n\nOK — удалить запись и принадлежащие ей ROM/обложку.\nОтмена — ничего не менять.`);if(!purge)return;const second=confirm('Это удалит ROM-файл с сервера, если запись не demo. Продолжить?');if(!second)return;button.disabled=true;try{const result=await api(`/api/admin/library/${encodeURIComponent(id)}?purge=1`,{method:'DELETE'});notice.textContent=`Удалено: ${title}. ${result.removed?.length?`Файлы: ${result.removed.join(', ')}`:'Файлы уже отсутствовали или запись была demo.'}`;await refresh()}catch(error){notice.textContent=`Удаление: ${error.message}`}finally{button.disabled=false}}
 
 if(adminToken)refresh().catch(()=>{});
