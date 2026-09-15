@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="player-page">
-  <header class="topbar">
+  <header class="topbar player-topbar">
     <div class="player-topbar-inner">
       <a class="brand" href="./index.html" aria-label="Retro Portal — на главную"><span class="brand-pixel">▦</span><span>RETRO</span><strong>PORTAL</strong></a>
       <a class="back-link" href="./index.html#library">← Библиотека</a>
@@ -17,42 +17,50 @@
   </header>
 
   <main class="player-shell">
-    <div class="player-meta">
-      <div><p id="gameSystem" class="eyebrow">ЗАГРУЗКА</p><h1 id="gameTitle">Готовим игру…</h1></div>
+    <div class="player-meta compact-player-head">
+      <div class="player-title-block"><p id="gameSystem" class="eyebrow">ЗАГРУЗКА</p><h1 id="gameTitle">Готовим игру…</h1></div>
       <div class="player-actions">
-        <button id="mobileMode" class="button mobile-mode-button" type="button">▰ МОБИЛЬНЫЙ РЕЖИМ</button>
-        <button id="controlsOpen" class="button" type="button">⌨ КЛАВИШИ</button>
+        <button id="controlsOpen" class="button" type="button">🎮 УПРАВЛЕНИЕ</button>
         <button id="fullscreenGame" class="button" type="button">⛶ ПОЛНЫЙ ЭКРАН</button>
-        <button id="reloadGame" class="button" type="button">↻ ПЕРЕЗАПУСК</button>
         <a class="button" href="./index.html#library">ВЫЙТИ</a>
       </div>
     </div>
-    <div id="mobileHint" class="mobile-hint">На телефоне удобнее играть в альбомной ориентации. «Мобильный режим» развернёт игровую область и оставит на экране виртуальный геймпад EmulatorJS.</div>
-    <div id="playerNotice" class="notice">Подготавливаем игру…</div>
-    <div id="gamepadNotice" class="gamepad-toast" hidden>🎮 Геймпад подключён</div>
-    <section class="game-frame" id="gameFrame"><div id="game" class="emulator-stage"></div></section>
+
+    <div id="playerNotice" class="notice loading-notice">Подготавливаем игру…</div>
+    <div id="gamepadNotice" class="gamepad-toast" hidden></div>
+
+    <section class="game-frame" id="gameFrame">
+      <div id="launchGuide" class="launch-guide" aria-live="polite">
+        <div class="launch-guide-card">
+          <p class="eyebrow">ПОКА ИГРА ЗАГРУЖАЕТСЯ</p>
+          <h2 id="launchGuideTitle">Управление</h2>
+          <div id="controlPreview" class="control-preview"></div>
+          <div class="gamepad-guide">
+            <strong>Геймпад</strong>
+            <span id="gamepadStatus">Можно подключить USB/Bluetooth-геймпад сейчас или во время игры.</span>
+          </div>
+        </div>
+      </div>
+      <div id="game" class="emulator-stage"></div>
+    </section>
 
     <section class="game-info" id="gameInfo" hidden>
       <article><p class="eyebrow">ОБ ИГРЕ</p><h2>Сюжет</h2><p id="gameDescription"></p></article>
       <article id="historyCard"><p class="eyebrow">ИСТОРИЯ</p><h2>Как появилась игра</h2><p id="gameHistory"></p></article>
     </section>
-
-    <section class="player-help">
-      <div><strong>Клавиатура</strong><span>Нажмите «Клавиши», чтобы настроить удобную раскладку для этой игры или всей платформы.</span></div>
-      <div><strong>Сохранения</strong><span>Save state и SRAM сохраняются средствами EmulatorJS в браузере.</span></div>
-      <div><strong>Геймпад</strong><span>USB / Bluetooth можно подключить до или во время игры.</span></div>
-    </section>
   </main>
 
   <div id="controlsModal" class="controls-modal" hidden>
     <section class="controls-dialog" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
-      <div class="controls-head"><div><p class="eyebrow">УПРАВЛЕНИЕ</p><h2 id="controlsTitle">Клавиши</h2><p id="controlsScheme"></p></div><button id="controlsClose" class="icon-button" type="button" aria-label="Закрыть">×</button></div>
+      <div class="controls-head"><div><p class="eyebrow">УПРАВЛЕНИЕ</p><h2 id="controlsTitle">Управление</h2><p id="controlsScheme"></p></div><button id="controlsClose" class="icon-button" type="button" aria-label="Закрыть">×</button></div>
       <div id="controlsList" class="controls-list"></div>
-      <p id="controlsMessage" class="controls-message">Нажмите на действие, затем нажмите нужную клавишу. Изменения применятся после перезапуска игры.</p>
+      <div class="controls-gamepad-card"><strong>🎮 Геймпад</strong><span id="controlsGamepadStatus">Подключите USB/Bluetooth-геймпад и нажмите любую кнопку — браузер увидит его автоматически.</span></div>
+      <p id="controlsMessage" class="controls-message">Нажмите на действие, затем нужную клавишу. Новая раскладка применится после перезапуска игры.</p>
       <div class="controls-actions">
         <button id="controlsSaveGame" class="primary" type="button">СОХРАНИТЬ ДЛЯ ИГРЫ</button>
         <button id="controlsSaveSystem" class="secondary" type="button">ДЛЯ ВСЕЙ ПЛАТФОРМЫ</button>
         <button id="controlsReset" class="button" type="button">СБРОСИТЬ</button>
+        <button id="reloadGame" class="button" type="button">↻ ПЕРЕЗАПУСТИТЬ ИГРУ</button>
       </div>
     </section>
   </div>

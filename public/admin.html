@@ -10,26 +10,12 @@
   <link rel="stylesheet" href="/admin.css">
 </head>
 <body class="admin-page">
-  <header class="topbar">
-    <div class="admin-shell topbar-inner">
-      <a class="brand" href="/" aria-label="Retro Portal"><span class="admin-pixel">▦</span><span>RETRO</span><strong>PORTAL</strong></a>
-      <span class="admin-title">LIBRARY MANAGER</span>
-      <a class="back-link" href="/">← На сайт</a>
-    </div>
-  </header>
+  <header class="topbar"><div class="admin-shell topbar-inner"><a class="brand" href="/" aria-label="Retro Portal"><span class="admin-pixel">▦</span><span>RETRO</span><strong>PORTAL</strong></a><span class="admin-title">LIBRARY MANAGER</span><a class="back-link" href="/">← На сайт</a></div></header>
 
   <main class="admin-shell admin-main">
     <section class="admin-hero">
-      <div>
-        <p class="eyebrow">КАБИНЕТ ВЛАДЕЛЬЦА</p>
-        <h1>Управляй порталом<br><span>из браузера.</span></h1>
-        <p>ROM, BIOS, карточки, описания, видимость игр и проверка метаданных управляются здесь. После установки для обычной работы консоль не нужна.</p>
-      </div>
-      <div id="authCard" class="admin-panel auth-card">
-        <label>ADMIN TOKEN<input id="adminToken" type="password" autocomplete="current-password" placeholder="Токен администратора"></label>
-        <button id="connectAdmin" class="primary" type="button">ВОЙТИ В КАБИНЕТ</button>
-        <p id="authMessage" class="admin-muted">Токен хранится только в sessionStorage текущей вкладки.</p>
-      </div>
+      <div><p class="eyebrow">КАБИНЕТ ВЛАДЕЛЬЦА</p><h1>Библиотека<br><span>без ручной рутины.</span></h1><p>Загружай ROM и BIOS, проверяй готовность, редактируй карточки, обложки и публикацию. Пустые метаданные автоматически дополняются фоновым worker'ом из разрешённых источников.</p></div>
+      <div id="authCard" class="admin-panel auth-card"><label>ADMIN TOKEN<input id="adminToken" type="password" autocomplete="current-password" placeholder="Токен администратора"></label><button id="connectAdmin" class="primary" type="button">ВОЙТИ В КАБИНЕТ</button><p id="authMessage" class="admin-muted">Токен хранится только в sessionStorage текущей вкладки.</p></div>
     </section>
 
     <div id="adminApp" hidden>
@@ -39,37 +25,35 @@
       <section class="admin-grid">
         <article class="admin-panel upload-panel">
           <div class="panel-heading"><div><p class="eyebrow">ДОБАВИТЬ ИГРУ</p><h2>Загрузить ROM</h2></div><span class="step-badge">01</span></div>
-          <p class="admin-muted">Файл принимает только кабинет администратора. После загрузки портал проверит формат, создаст карточку и подготовит метаданные на утверждение.</p>
+          <p class="admin-muted">Формат проверяется до публикации. Для дисковых систем предпочтительны CHD/PBP: они компактнее и обычно быстрее загружаются в браузере.</p>
           <label>ПЛАТФОРМА<select id="romSystem"><option value="auto">Определить автоматически</option><option value="megadrive">Mega Drive</option><option value="ps1">PlayStation</option><option value="dreamcast">Dreamcast</option><option value="nes">NES</option><option value="snes">SNES</option><option value="gb">Game Boy / Color</option><option value="gba">Game Boy Advance</option><option value="n64">Nintendo 64</option><option value="arcade">Arcade</option></select></label>
           <label class="admin-drop"><input id="romFile" type="file"><strong id="romFileName">Выберите ROM</strong><span>или перетащите файл сюда</span></label>
-          <div class="upload-actions"><button id="uploadRom" class="primary" type="button" disabled>ЗАГРУЗИТЬ ROM</button><div class="progress"><i id="romProgress"></i></div></div>
-          <p id="romMessage" class="admin-message"></p>
+          <div class="upload-actions"><button id="uploadRom" class="primary" type="button" disabled>ЗАГРУЗИТЬ ROM</button><div class="progress"><i id="romProgress"></i></div></div><p id="romMessage" class="admin-message"></p>
         </article>
 
         <article class="admin-panel upload-panel">
           <div class="panel-heading"><div><p class="eyebrow">ЗАВИСИМОСТИ</p><h2>Загрузить BIOS</h2></div><span class="step-badge">02</span></div>
-          <p class="admin-muted">BIOS никогда не показывается игрокам. Для PS1 известные образы проверяются по хешу; неизвестный BIOS отклоняется.</p>
+          <p class="admin-muted">Портал не скачивает proprietary BIOS из Интернета. Используй собственный легально полученный dump: известные PS1-образы проверяются по MD5, Dreamcast — по назначению и диагностике.</p>
           <label>СИСТЕМА<select id="biosSystem"><option value="ps1">PlayStation</option><option value="dreamcast">Dreamcast</option></select></label>
           <label>НАЗНАЧЕНИЕ<select id="biosTarget"><option value="">Определить по файлу</option><option value="scph5501.bin">PS1 US — scph5501.bin</option><option value="scph5502.bin">PS1 EU — scph5502.bin</option><option value="scph5500.bin">PS1 JP — scph5500.bin</option><option value="dc_boot.bin">Dreamcast — dc_boot.bin</option><option value="dc_flash.bin">Dreamcast — dc_flash.bin</option></select></label>
           <label class="admin-drop compact"><input id="biosFile" type="file"><strong id="biosFileName">Выберите BIOS</strong></label>
-          <div class="upload-actions"><button id="uploadBios" class="secondary" type="button" disabled>ЗАГРУЗИТЬ BIOS</button><div class="progress"><i id="biosProgress"></i></div></div>
-          <p id="biosMessage" class="admin-message"></p>
+          <div class="upload-actions"><button id="uploadBios" class="secondary" type="button" disabled>ЗАГРУЗИТЬ BIOS</button><div class="progress"><i id="biosProgress"></i></div></div><p id="biosMessage" class="admin-message"></p>
         </article>
       </section>
 
-      <section class="admin-panel scan-panel">
-        <div><p class="eyebrow">БОЛЬШАЯ БИБЛИОТЕКА</p><h2>Сканирование папок</h2><p class="admin-muted">Если образы уже скопированы через SCP/SFTP в <code>games/roms/&lt;platform&gt;/</code>, нажмите «Сканировать». Новые игры зарегистрируются автоматически.</p></div>
-        <button id="scanLibrary" class="secondary" type="button">↻ СКАНИРОВАТЬ</button>
-      </section>
+      <section class="admin-panel scan-panel"><div><p class="eyebrow">БОЛЬШАЯ БИБЛИОТЕКА</p><h2>Сканирование папок</h2><p class="admin-muted">Если образы уже скопированы через SCP/SFTP в <code>games/roms/&lt;platform&gt;/</code>, новые совместимые файлы можно зарегистрировать одной кнопкой.</p></div><button id="scanLibrary" class="secondary" type="button">↻ СКАНИРОВАТЬ</button></section>
 
       <section class="library-manager">
         <div class="manager-heading"><div><p class="eyebrow">СОСТОЯНИЕ БИБЛИОТЕКИ</p><h2>Игры, описания и публикация</h2></div><button id="refreshAdmin" class="ghost-button" type="button">Обновить</button></div>
-        <div id="managerNotice" class="admin-muted"></div>
-        <div id="adminGames" class="admin-games"></div>
+        <div class="library-toolbar">
+          <label>ПЛАТФОРМА<select id="platformFilter"><option value="all">Все платформы</option></select></label>
+          <label>ПОИСК<input id="adminSearch" type="search" placeholder="Название или ROM"></label>
+          <label>СОРТИРОВКА<select id="adminSort"><option value="platform-title">Платформа → А–Я</option><option value="title">Название А–Я</option><option value="status">Сначала проблемы</option></select></label>
+        </div>
+        <div id="managerNotice" class="admin-muted"></div><div id="adminGames" class="admin-games"></div>
       </section>
     </div>
   </main>
-
   <script src="/admin.js"></script>
 </body>
 </html>
