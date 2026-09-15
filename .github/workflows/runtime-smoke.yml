@@ -18,13 +18,14 @@ jobs:
         run: |
           grep -q 'find "$DEST/data" -type d -exec chmod 0755' scripts/install-emulatorjs.sh
           grep -q 'find "$DEST/data" -type f -exec chmod 0644' scripts/install-emulatorjs.sh
+          grep -q 'mobile disc extension requires the pinned 4.2.3' scripts/install-emulatorjs.sh
           grep -q 'location \^~ /emulatorjs/' nginx.conf
           grep -q 'force-recreate.*FRONTEND_SERVICE' scripts/update.sh
 
       - name: Start portal with runtime fixture
         run: |
           mkdir -p emulatorjs/data
-          printf 'window.__retroRuntimeSmoke = true;\n' > emulatorjs/data/loader.js
+          printf 'window.__retroRuntimeSmoke = true;\n    const config = {};\n' > emulatorjs/data/loader.js
           chmod 0755 emulatorjs emulatorjs/data
           chmod 0644 emulatorjs/data/loader.js
 
@@ -51,9 +52,14 @@ jobs:
 
           curl -fsS http://127.0.0.1:18091/healthz >/dev/null
           curl -fsS http://127.0.0.1:18091/emulatorjs/data/loader.js | grep -q '__retroRuntimeSmoke'
+          curl -fsS http://127.0.0.1:18091/emulatorjs-mobile-loader.js | grep -q 'mobileDiscStream'
+          curl -fsS http://127.0.0.1:18091/mobile-disc-stream.js | grep -q 'CHUNK_BYTES'
 
           curl -fsSI http://127.0.0.1:18091/game.js | tr -d '\r' | grep -qi '^cache-control: .*no-cache'
           curl -fsSI http://127.0.0.1:18091/styles.css | tr -d '\r' | grep -qi '^cache-control: .*no-cache'
+          curl -fsSI http://127.0.0.1:18091/roms/tank-battle.bin | tr -d '\r' | grep -qi '^accept-ranges: bytes'
+          test "$(curl -sS -o /tmp/rom-range.bin -w '%{http_code}' -H 'Range: bytes=0-3' http://127.0.0.1:18091/roms/tank-battle.bin)" = '206'
+          test "$(wc -c </tmp/rom-range.bin)" = '4'
 
           # Replace the config inode, as a Git checkout does, then verify the
           # updater remounts it and preserves backend catalog/auth state.
@@ -79,4 +85,3 @@ jobs:
             echo 'Unexpected duplicate ISO MIME warning' >&2
             exit 1
           fi
-

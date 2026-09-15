@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.3 — Mobile PlayStation memory fix
+
+- stream same-origin PlayStation CHD/PBP images into EmulatorJS MEMFS with validated 8 MiB HTTP range requests;
+- eliminate the second full-size JavaScript ROM buffer that caused iPhone Safari to reload near the end of a download;
+- disable the EmulatorJS ROM cache and threaded core for PlayStation on touch devices;
+- keep the simple 0.11.2 player UI and its single fullscreen action unchanged;
+- validate byte-range delivery from the ROM location in the runtime smoke test;
+- refuse deployment with an incompatible EmulatorJS bootstrap instead of silently falling back to full-buffer loading;
+- pause activity polling and presence sockets in hidden tabs to remove misleading background traffic from access logs.
+
 ## 0.11.2 — Simple player UI rollback
 
 - restore the clean pre-mobile-mode player surface;

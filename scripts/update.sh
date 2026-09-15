@@ -98,6 +98,8 @@ if [[ ! -f emulatorjs/data/loader.js ]]; then
   info 'EmulatorJS runtime is missing; installing pinned runtime...'
   ./scripts/install-emulatorjs.sh 4.2.3
 fi
+grep -qF '    const config = {};' emulatorjs/data/loader.js || \
+  die 'Installed EmulatorJS runtime is incompatible with mobile disc streaming. Run ./scripts/install-emulatorjs.sh 4.2.3 and retry.'
 
 refresh_frontend() {
   # Remount replaced Nginx files without unnecessarily restarting backend state.
@@ -146,4 +148,3 @@ ok "$MODE deployment is healthy on 127.0.0.1:$APP_PORT."
 echo "Version: $(cat VERSION 2>/dev/null || echo unknown)"
 echo "Commit:  $NEW_SHA"
 if [[ "$MODE" == standalone ]]; then echo 'Recommended: ./scripts/doctor.sh'; fi
-

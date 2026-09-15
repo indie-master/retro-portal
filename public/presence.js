@@ -33,7 +33,8 @@
   function send(payload) { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload)); }
   function connect() {
     clearTimeout(retry);
-    if (!['http:', 'https:'].includes(location.protocol)) return;
+    if (document.hidden || !['http:', 'https:'].includes(location.protocol)) return;
+    if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return;
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(`${protocol}//${location.host}/ws/presence`);
     renderState('connecting', false);
@@ -51,7 +52,11 @@
         window.dispatchEvent(new CustomEvent('arcade:presence', { detail: message }));
       } catch {}
     };
-    socket.onclose = () => { renderState('reconnecting', false); retry = setTimeout(connect, 1800); };
+    socket.onclose = () => {
+      socket = null;
+      renderState('reconnecting', false);
+      if (!document.hidden) retry = setTimeout(connect, 1800);
+    };
     socket.onerror = () => socket.close();
   }
   window.RetroPresence = {
@@ -59,6 +64,16 @@
     playing(gameId) { currentGame = gameId || null; if (currentGame) send({ type: 'playing', gameId: currentGame }); else send({ type: 'idle' }); },
     idle() { currentGame = null; send({ type: 'idle' }); }
   };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearTimeout(retry);
+      if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+        try { socket.close(1000, 'hidden'); } catch {}
+      }
+    } else {
+      connect();
+    }
+  });
   connect();
-  setInterval(() => send({ type: 'ping', ts: Date.now() }), 20000);
+  setInterval(() => { if (!document.hidden) send({ type: 'ping', ts: Date.now() }); }, 20000);
 })();
