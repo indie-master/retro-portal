@@ -185,13 +185,20 @@ async function readBinaryBody(req, limit, tooLargeError = 'upload-too-large') {
   return Buffer.concat(chunks);
 }
 
-async function fileExists(root, value) {
+async function fileDetails(root, value) {
   const safe = safeRelative(value);
-  if (!safe) return false;
+  if (!safe) return null;
   const rootResolved = path.resolve(root);
   const target = path.resolve(root, safe);
-  if (!(target === rootResolved || target.startsWith(`${rootResolved}${path.sep}`))) return false;
-  try { return (await fs.stat(target)).isFile(); } catch { return false; }
+  if (!(target === rootResolved || target.startsWith(`${rootResolved}${path.sep}`))) return null;
+  try {
+    const stat = await fs.stat(target);
+    return stat.isFile() ? { bytes: stat.size, modifiedAt: stat.mtimeMs } : null;
+  } catch { return null; }
+}
+
+async function fileExists(root, value) {
+  return Boolean(await fileDetails(root, value));
 }
 
 async function loadCatalogData() {
@@ -273,7 +280,10 @@ async function popularGames(days = 7, limit = 6) {
 }
 
 async function hydrateGame(game) {
-  const installed = await fileExists(ROM_ROOT, game.rom);
+  const romFile = await fileDetails(ROM_ROOT, game.rom);
+  const installed = Boolean(romFile);
+  const romRelative = safeRelative(game.rom);
+  const romFormat = romRelative ? path.extname(romRelative).slice(1).toLowerCase() : '';
   const biosFiles = Array.isArray(game.bios) ? game.bios : (game.bios ? [game.bios] : []);
   const biosStates = await Promise.all(biosFiles.map((item) => fileExists(BIOS_ROOT, item)));
   const biosInstalled = biosStates.every(Boolean);
@@ -293,6 +303,8 @@ async function hydrateGame(game) {
     controlScheme: game.controlScheme || SYSTEMS[systemKeyByLabel(game.system)]?.controlScheme || game.core,
     controls: game.controls && typeof game.controls === 'object' ? game.controls : null,
     rom: game.rom,
+    romBytes: romFile?.bytes || 0,
+    romFormat,
     romExpected: safeRelative(game.rom),
     biosExpected: biosFiles.map(safeRelative).filter(Boolean),
     missingBios,

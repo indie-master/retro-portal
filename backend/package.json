@@ -1,6 +1,6 @@
 {
   "name": "retro-portal-backend",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,4 +13,3 @@
     "ws": "8.21.3"
   }
 }
-
