@@ -1,0 +1,163 @@
+/* Simple player layout: controls above a clean EmulatorJS surface. */
+.player-topbar-inner {
+  width: min(1440px, calc(100% - 48px));
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.compact-player-head { align-items: flex-end; }
+.player-title-block { min-width: 0; }
+.player-title-block h1 { margin-bottom: 0; }
+.notice[hidden] { display: none !important; }
+.game-frame { position: relative; overflow: hidden; background: #000; }
+.controls-gamepad-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 14px 0 4px;
+  padding: 11px 13px;
+  border: 1px solid #304c58;
+  border-radius: 9px;
+  background: #0b1b23;
+  color: #9fb0b7;
+  font-size: 11px;
+}
+
+.controls-gamepad-card strong { color: #d7e3e7; white-space: nowrap; }
+
+.game-frame:fullscreen,
+.game-frame:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  padding: max(0px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) max(0px, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  touch-action: none;
+}
+
+.game-frame:fullscreen .emulator-stage,
+.game-frame:-webkit-full-screen .emulator-stage { width: 100%; height: 100%; }
+
+@media (max-width: 760px), (pointer: coarse) {
+  .player-page { overscroll-behavior: none; }
+  .player-page .topbar { position: relative; }
+  .player-topbar-inner { width: min(100% - 24px, 1440px); gap: 12px; }
+  .player-topbar-inner .brand { font-size: 11px; }
+  .player-topbar-inner .back-link { margin-left: auto; font-size: 10px; }
+  .player-topbar-inner .status { display: none; }
+  .player-shell {
+    width: 100%;
+    margin: 14px auto 32px;
+    padding: 0 max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
+    box-sizing: border-box;
+  }
+
+  .player-meta { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+  .player-meta h1 { margin: 5px 0 0; font-size: clamp(28px, 8vw, 42px); line-height: 1.02; }
+  .player-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .player-actions .button {
+    min-width: 0;
+    min-height: 46px;
+    padding: 0 8px;
+    font-size: 8px;
+    text-align: center;
+    touch-action: manipulation;
+  }
+
+  .player-actions a.button { grid-column: 1 / -1; }
+  .notice { margin-bottom: 10px; padding: 9px 11px; font-size: 11px; line-height: 1.4; }
+  .game-frame {
+    width: 100%;
+    height: min(70dvh, calc((100vw - 20px) * .75));
+    min-height: 280px;
+    aspect-ratio: auto;
+    border-radius: 8px;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .game-frame .emulator-stage { width: 100%; height: 100%; touch-action: none; }
+  .game-info { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .gamepad-toast {
+    left: 10px;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    text-align: center;
+  }
+
+  .controls-dialog {
+    max-height: calc(100dvh - 20px);
+    overflow: auto;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .controls-actions { display: grid; grid-template-columns: 1fr; }
+  .controls-gamepad-card { align-items: flex-start; flex-direction: column; gap: 6px; }
+
+  body.player-fullscreen-fallback { overflow: hidden; background: #000; touch-action: none; }
+  body.player-fullscreen-fallback .topbar,
+  body.player-fullscreen-fallback .player-title-block,
+  body.player-fullscreen-fallback #playerNotice,
+  body.player-fullscreen-fallback .game-info,
+  body.player-fullscreen-fallback .player-actions > :not(#fullscreenGame) { display: none !important; }
+  body.player-fullscreen-fallback .player-shell { width: 100%; margin: 0; padding: 0; }
+  body.player-fullscreen-fallback .player-meta { position: fixed; inset: 0; z-index: 5001; pointer-events: none; }
+  body.player-fullscreen-fallback .player-actions {
+    position: fixed;
+    top: calc(6px + env(safe-area-inset-top));
+    right: calc(6px + env(safe-area-inset-right));
+    z-index: 5002;
+    display: block;
+    pointer-events: none;
+  }
+
+  body.player-fullscreen-fallback #fullscreenGame {
+    display: inline-flex;
+    min-height: 34px;
+    padding: 0 10px;
+    border-color: rgba(255, 255, 255, .45);
+    border-radius: 18px;
+    background: rgba(2, 7, 10, .68);
+    color: #fff;
+    opacity: .72;
+    pointer-events: auto;
+  }
+
+  body.player-fullscreen-fallback .game-frame {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    background: #000;
+    padding: max(0px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) max(0px, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
+    box-sizing: border-box;
+  }
+
+  body.player-fullscreen-fallback .emulator-stage { width: 100%; height: 100%; min-height: 0; }
+}
+
+@media (max-width: 430px) {
+  .game-frame { min-height: 260px; height: 62dvh; }
+}
+
+@media (pointer: coarse) {
+  .local-page .player-wrap:not(.hidden) { width: 100%; margin-left: 0; margin-right: 0; }
+  .local-page .playerbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; }
+  .local-page .playerbar .secondary { min-height: 44px; flex: 1 1 140px; }
+  .local-page .playerbar #nowPlaying { flex: 1 0 100%; white-space: normal; }
+  .local-page .game-frame { touch-action: none; }
+}

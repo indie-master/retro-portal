@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07131a">
+  <title>Игра · Retro Portal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="player-page">
+  <header class="topbar player-topbar">
+    <div class="player-topbar-inner">
+      <a class="brand" href="./index.html" aria-label="Retro Portal — на главную"><span class="brand-pixel">▦</span><span>RETRO</span><strong>PORTAL</strong></a>
+      <a class="back-link" href="./index.html#library">← Библиотека</a>
+      <div class="status"><i id="statusDot"></i><span id="connection">В СЕТИ</span><strong id="online">0</strong><em>ОНЛАЙН</em></div>
+    </div>
+  </header>
+
+  <main class="player-shell">
+    <div class="player-meta compact-player-head">
+      <div class="player-title-block"><p id="gameSystem" class="eyebrow">ЗАГРУЗКА</p><h1 id="gameTitle">Готовим игру…</h1></div>
+      <div class="player-actions">
+        <button id="controlsOpen" class="button" type="button">🎮 УПРАВЛЕНИЕ</button>
+        <button id="fullscreenGame" class="button" type="button">⛶ ПОЛНЫЙ ЭКРАН</button>
+        <a class="button" href="./index.html#library">ВЫЙТИ</a>
+      </div>
+    </div>
+
+    <div id="playerNotice" class="notice" hidden></div>
+    <div id="gamepadNotice" class="gamepad-toast" hidden></div>
+
+    <section class="game-frame" id="gameFrame">
+      <div id="game" class="emulator-stage"></div>
+    </section>
+
+    <section class="game-info" id="gameInfo" hidden>
+      <article><p class="eyebrow">ОБ ИГРЕ</p><h2>Сюжет</h2><p id="gameDescription"></p></article>
+      <article id="historyCard"><p class="eyebrow">ИСТОРИЯ</p><h2>Как появилась игра</h2><p id="gameHistory"></p></article>
+    </section>
+  </main>
+
+  <div id="controlsModal" class="controls-modal" hidden>
+    <section class="controls-dialog" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
+      <div class="controls-head"><div><p class="eyebrow">УПРАВЛЕНИЕ</p><h2 id="controlsTitle">Управление</h2><p id="controlsScheme"></p></div><button id="controlsClose" class="icon-button" type="button" aria-label="Закрыть">×</button></div>
+      <div id="controlsList" class="controls-list"></div>
+      <div class="controls-gamepad-card"><strong>🎮 Геймпад</strong><span id="controlsGamepadStatus">Подключите USB/Bluetooth-геймпад и нажмите любую кнопку — браузер увидит его автоматически.</span></div>
+      <p id="controlsMessage" class="controls-message">Нажмите на действие, затем нужную клавишу. Новая раскладка применится после перезапуска игры.</p>
+      <div class="controls-actions">
+        <button id="controlsSaveGame" class="primary" type="button">СОХРАНИТЬ ДЛЯ ИГРЫ</button>
+        <button id="controlsSaveSystem" class="secondary" type="button">ДЛЯ ВСЕЙ ПЛАТФОРМЫ</button>
+        <button id="controlsReset" class="button" type="button">СБРОСИТЬ</button>
+        <button id="reloadGame" class="button" type="button">↻ ПЕРЕЗАПУСТИТЬ ИГРУ</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="presence.js"></script><script src="controls.js"></script><script src="game.js"></script>
+</body>
+</html>

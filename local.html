@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07131a">
+  <title>Локальный ROM · Retro Portal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="local-page">
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-alien" viewBox="0 0 24 24"><path d="M8 3h2v2h4V3h2v2h2v2h2v8h-2v2h-3v-3H9v3H6v-2H4V7h2V5h2V3Zm0 6v2h2V9H8Zm6 0v2h2V9h-2Z" fill="currentColor"/></symbol>
+    <symbol id="i-gamepad" viewBox="0 0 24 24"><path d="M7 7h10c2 0 3 1 4 4l1 4c.7 3-1 5-3 5-2 0-3-2-4-3H9c-1 1-2 3-4 3-2 0-3.7-2-3-5l1-4c1-3 2-4 4-4Zm1 4H6v2H4v2h2v2h2v-2h2v-2H8v-2Zm8 1h2v2h-2v-2Zm-3 3h2v2h-2v-2Z" fill="currentColor"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM1 21v-2c0-4 3-6 7-6s7 2 7 6v2H1Zm14 0v-2c0-2-.6-3.5-1.8-4.7.8-.2 1.8-.3 2.8-.3 4 0 7 2 7 6v1h-8Z" fill="currentColor"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 5h7l2 2h9v12H3V5Zm2 4v8h14V9H5Z" fill="currentColor"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3h2v11H4V10h2Zm2 0h8V7a4 4 0 0 0-8 0v3Zm3 4v4h2v-4h-2Z" fill="currentColor"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 5 13h6l-1 9 9-12h-6V2Z" fill="currentColor"/></symbol>
+  </svg>
+
+  <header class="topbar local-topbar"><div class="local-wide topbar-inner">
+    <a class="brand" href="./index.html" aria-label="Retro Portal — на главную"><svg class="brand-mark"><use href="#i-alien"/></svg><span>RETRO</span><strong>PORTAL</strong></a>
+    <a class="back-link" href="./index.html#library">← Библиотека</a>
+    <div class="status"><i id="statusDot"></i><span id="connection">В СЕТИ</span><svg><use href="#i-users"/></svg><strong id="online">0</strong><em>ОНЛАЙН</em></div>
+  </div></header>
+
+  <main>
+    <section class="local-hero"><div class="local-wide local-hero-grid"><div class="local-copy">
+      <p class="eyebrow">ЛОКАЛЬНЫЙ ROM ПЛЕЕР</p>
+      <h1>Своя игра.<br>Прямо из <span>файла.</span></h1>
+      <p class="lead">ROM остаётся на твоём устройстве. Выбери платформу, укажи файл — и игра запустится локально в браузере, без загрузки ROM на сервер.</p>
+    </div><div class="local-hero-art"><div class="local-crt"><strong>PLAY<br>ANYTHING</strong><span>FROM YOUR ROM</span><em>JUST PLAY</em></div></div></div></section>
+
+    <section class="local-wide launcher-section"><div class="launcher-layout">
+      <section id="launcher" class="launcher">
+        <label class="field-label">1. ВЫБЕРИТЕ ПЛАТФОРМУ<select id="core"><option value="nes">NES / Famicom</option><option value="snes">SNES</option><option value="gb">Game Boy / Color</option><option value="gba">Game Boy Advance</option><option value="segaMD">Mega Drive / Genesis</option><option value="psx">PlayStation</option><option value="n64">Nintendo 64</option><option value="arcade">Arcade</option><option value="flycast" disabled>Dreamcast — experimental</option></select></label>
+        <label class="field-label rom-label">2. ВЫБЕРИТЕ ROM ФАЙЛ<span class="drop" id="dropZone"><input id="rom" type="file" accept=".zip,.7z,.nes,.sfc,.smc,.gb,.gbc,.gba,.bin,.cue,.chd,.md,.gen,.z64,.n64,.v64"><svg class="folder-icon"><use href="#i-folder"/></svg><strong>Перетащите ROM файл сюда</strong><span id="romName">или нажмите, чтобы выбрать файл</span><em>Поддерживаются: <b>.nes</b><b>.sfc</b><b>.gb</b><b>.gba</b><b>.gen</b><b>.chd</b><b>и другие</b></em></span></label>
+        <div class="launch-row"><button id="launch" class="primary local-launch" disabled><svg><use href="#i-gamepad"/></svg> ЗАПУСТИТЬ ИГРУ <b>→</b></button><p><span class="shield">◇</span> Файл остаётся на вашем устройстве<br>и не загружается на сервер</p></div>
+      </section>
+      <aside class="launcher-aside"><div class="aside-item"><b><svg><use href="#i-bolt"/></svg></b><div><strong>Быстрое начало</strong><span>Выберите файл и играйте<br>без ожидания</span></div></div><div class="aside-item"><b><svg><use href="#i-lock"/></svg></b><div><strong>Полная приватность</strong><span>ROM остаётся локально<br>в вашем браузере</span></div></div><div class="aside-item"><b><svg><use href="#i-gamepad"/></svg></b><div><strong>Любимые платформы</strong><span>От NES и SNES до Mega Drive<br>и PlayStation</span></div></div><div class="aside-motto">GOOD GAMES<br>BETTER DAYS</div></aside>
+    </div><section id="playerWrap" class="player-wrap hidden"><div class="playerbar"><button id="reset" class="secondary">← СМЕНИТЬ ИГРУ</button><button id="localFullscreen" class="secondary">⛶ ПОЛНЫЙ ЭКРАН</button><span id="nowPlaying"></span></div><div id="localGameFrame" class="game-frame"><div id="game" class="emulator-stage"></div></div></section></section>
+  </main>
+
+  <footer class="footer local-wide"><span>RETROPORTAL &nbsp;—&nbsp; ИГРЫ ОБЪЕДИНЯЮТ</span><span>PLAY &nbsp;•&nbsp; EXPLORE &nbsp;•&nbsp; REPEAT &nbsp; <b>♥</b></span></footer>
+  <script src="presence.js"></script><script src="local.js"></script>
+</body>
+</html>
