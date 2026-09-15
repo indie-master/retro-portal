@@ -14,11 +14,12 @@ jobs:
         with:
           submodules: false
 
-      - name: Validate runtime installer permission contract
+      - name: Validate runtime installer and updater contracts
         run: |
           grep -q 'find "$DEST/data" -type d -exec chmod 0755' scripts/install-emulatorjs.sh
           grep -q 'find "$DEST/data" -type f -exec chmod 0644' scripts/install-emulatorjs.sh
           grep -q 'location \^~ /emulatorjs/' nginx.conf
+          grep -q 'force-recreate.*FRONTEND_SERVICE' scripts/update.sh
 
       - name: Start portal with runtime fixture
         run: |
@@ -49,6 +50,7 @@ jobs:
 
           curl -fsS http://127.0.0.1:18091/healthz >/dev/null
           curl -fsS http://127.0.0.1:18091/emulatorjs/data/loader.js | grep -q '__retroRuntimeSmoke'
+          curl -fsSI http://127.0.0.1:18091/game.js | tr -d '\r' | grep -qi '^cache-control: .*no-cache'
 
           NGINX_TEST="$(docker compose exec -T web nginx -t 2>&1)"
           printf '%s\n' "$NGINX_TEST"
