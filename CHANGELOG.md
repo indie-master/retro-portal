@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.2 — Simple player UI rollback
+
+- restore the clean pre-mobile-mode player surface;
+- remove the separate mobile-mode action, launch card, waiting copy, rotate hint and in-game exit overlay;
+- keep one fullscreen action for desktop and mobile, with native fullscreen first and a clean viewport fallback;
+- hide normal loading/ready notices while retaining visible error reporting;
+- preserve the PlayStation mobile memory limits and dedicated touch controls introduced in 0.11.1.
+
 ## 0.11.1 — Mobile player hotfix
 
 - restore the documented mobile-mode action removed during the 0.11.0 player consolidation;
