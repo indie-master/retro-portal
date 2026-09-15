@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07131a">
   <title>Игра · Retro Portal</title>
   <link rel="stylesheet" href="/styles.css">
@@ -20,12 +20,14 @@
     <div class="player-meta">
       <div><p id="gameSystem" class="eyebrow">ЗАГРУЗКА</p><h1 id="gameTitle">Готовим игру…</h1></div>
       <div class="player-actions">
+        <button id="mobileMode" class="button mobile-mode-button" type="button">▰ МОБИЛЬНЫЙ РЕЖИМ</button>
         <button id="controlsOpen" class="button" type="button">⌨ КЛАВИШИ</button>
         <button id="fullscreenGame" class="button" type="button">⛶ ПОЛНЫЙ ЭКРАН</button>
         <button id="reloadGame" class="button" type="button">↻ ПЕРЕЗАПУСК</button>
         <a class="button" href="./index.html#library">ВЫЙТИ</a>
       </div>
     </div>
+    <div id="mobileHint" class="mobile-hint">На телефоне удобнее играть в альбомной ориентации. «Мобильный режим» развернёт игровую область и оставит на экране виртуальный геймпад EmulatorJS.</div>
     <div id="playerNotice" class="notice">Подготавливаем игру…</div>
     <div id="gamepadNotice" class="gamepad-toast" hidden>🎮 Геймпад подключён</div>
     <section class="game-frame" id="gameFrame"><div id="game" class="emulator-stage"></div></section>

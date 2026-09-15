@@ -5,27 +5,59 @@ const system = document.querySelector('#gameSystem');
 const notice = document.querySelector('#playerNotice');
 const frame = document.querySelector('#gameFrame');
 const fullscreenButton = document.querySelector('#fullscreenGame');
+const mobileModeButton = document.querySelector('#mobileMode');
 const controlsButton = document.querySelector('#controlsOpen');
 const gamepadNotice = document.querySelector('#gamepadNotice');
 const gameInfo = document.querySelector('#gameInfo');
 const gameDescription = document.querySelector('#gameDescription');
 const gameHistory = document.querySelector('#gameHistory');
 const historyCard = document.querySelector('#historyCard');
+const touchLike = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 let loadedGame = null;
 
+document.body.classList.toggle('touch-device', touchLike);
 document.querySelector('#reloadGame')?.addEventListener('click', () => location.reload());
-fullscreenButton?.addEventListener('click', async () => {
+
+async function lockLandscape() {
   try {
-    if (!document.fullscreenElement) await frame.requestFullscreen();
-    else await document.exitFullscreen();
+    if (screen.orientation?.lock) await screen.orientation.lock('landscape');
+  } catch (error) {
+    console.debug('Orientation lock unavailable', error?.message || error);
+  }
+}
+
+function unlockOrientation() {
+  try { screen.orientation?.unlock?.(); } catch {}
+}
+
+async function requestGameFullscreen() {
+  try {
+    if (!document.fullscreenElement) {
+      if (frame.requestFullscreen) await frame.requestFullscreen({ navigationUI: 'hide' });
+      else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+    } else if (document.exitFullscreen) await document.exitFullscreen();
   } catch (error) {
     console.warn('Fullscreen unavailable', error);
   }
+}
+
+fullscreenButton?.addEventListener('click', requestGameFullscreen);
+mobileModeButton?.addEventListener('click', async () => {
+  document.body.classList.add('mobile-playing');
+  await requestGameFullscreen();
+  await lockLandscape();
+  try { frame.scrollIntoView({ block: 'start', behavior: 'instant' }); } catch { frame.scrollIntoView(); }
 });
 controlsButton?.addEventListener('click', () => loadedGame && window.RetroControls?.open(loadedGame));
 
 document.addEventListener('fullscreenchange', () => {
-  if (fullscreenButton) fullscreenButton.textContent = document.fullscreenElement ? '⤢ ВЫЙТИ ИЗ ЭКРАНА' : '⛶ ПОЛНЫЙ ЭКРАН';
+  const fullscreen = Boolean(document.fullscreenElement);
+  if (fullscreenButton) fullscreenButton.textContent = fullscreen ? '⤢ ВЫЙТИ ИЗ ЭКРАНА' : '⛶ ПОЛНЫЙ ЭКРАН';
+  if (mobileModeButton) mobileModeButton.textContent = fullscreen ? '⤢ ВЫЙТИ ИЗ ЭКРАНА' : '▰ МОБИЛЬНЫЙ РЕЖИМ';
+  if (!fullscreen) {
+    document.body.classList.remove('mobile-playing');
+    unlockOrientation();
+  }
 });
 
 function showError(message) {
@@ -88,6 +120,7 @@ async function boot() {
     window.EJS_biosUrl = game.biosUrl || '';
     window.EJS_pathtodata = '/emulatorjs/data/';
     window.EJS_startOnLoaded = true;
+    window.EJS_fullscreenOnLoaded = false;
     window.EJS_language = 'ru-RU';
     window.EJS_disableAutoLang = true;
     window.EJS_threads = Boolean(window.crossOriginIsolated);
@@ -96,7 +129,9 @@ async function boot() {
     window.EJS_backgroundColor = '#05070a';
     window.EJS_Buttons = { exitEmulation: false };
 
-    notice.textContent = 'Готово. Стрелки — движение, Z/X — основные действия. «Клавиши» открывает полную настройку.';
+    notice.textContent = touchLike
+      ? 'Готово. На сенсорном экране EmulatorJS покажет виртуальный геймпад. Для игры поверните телефон и нажмите «Мобильный режим».'
+      : 'Готово. Стрелки — движение, Z/X — основные действия. «Клавиши» открывает полную настройку.';
     const script = document.createElement('script');
     script.src = '/emulatorjs/data/loader.js';
     script.async = true;
@@ -109,5 +144,8 @@ async function boot() {
   }
 }
 
-window.addEventListener('beforeunload', () => window.RetroPresence?.idle());
+window.addEventListener('beforeunload', () => {
+  window.RetroPresence?.idle();
+  unlockOrientation();
+});
 boot();

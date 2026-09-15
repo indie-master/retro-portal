@@ -8,8 +8,11 @@ const playerWrap = document.querySelector('#playerWrap');
 const nowPlaying = document.querySelector('#nowPlaying');
 const localFullscreen = document.querySelector('#localFullscreen');
 const localGameFrame = document.querySelector('#localGameFrame');
+const touchLike = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 let selectedFile = null;
 let objectUrl = null;
+
+document.body.classList.toggle('touch-device', touchLike);
 
 function choose(file) {
   selectedFile = file || null;
@@ -31,6 +34,7 @@ launch.addEventListener('click', () => {
   window.EJS_gameUrl = objectUrl;
   window.EJS_pathtodata = '/emulatorjs/data/';
   window.EJS_startOnLoaded = true;
+  window.EJS_fullscreenOnLoaded = false;
   window.EJS_language = 'ru-RU';
   window.EJS_threads = Boolean(window.crossOriginIsolated);
   window.EJS_fixedSaveInterval = 15000;
@@ -49,14 +53,23 @@ launch.addEventListener('click', () => {
 document.querySelector('#reset').addEventListener('click', () => location.reload());
 localFullscreen?.addEventListener('click', async () => {
   try {
-    if (!document.fullscreenElement) await localGameFrame.requestFullscreen();
-    else await document.exitFullscreen();
+    if (!document.fullscreenElement) {
+      if (localGameFrame.requestFullscreen) await localGameFrame.requestFullscreen({ navigationUI: 'hide' });
+      else if (localGameFrame.webkitRequestFullscreen) localGameFrame.webkitRequestFullscreen();
+      if (touchLike && screen.orientation?.lock) {
+        try { await screen.orientation.lock('landscape'); } catch {}
+      }
+    } else await document.exitFullscreen();
   } catch (error) { console.warn('Fullscreen unavailable', error); }
 });
 document.addEventListener('fullscreenchange', () => {
   if (localFullscreen) localFullscreen.textContent = document.fullscreenElement ? '⤢ ВЫЙТИ ИЗ ЭКРАНА' : '⛶ ПОЛНЫЙ ЭКРАН';
+  if (!document.fullscreenElement) {
+    try { screen.orientation?.unlock?.(); } catch {}
+  }
 });
 window.addEventListener('beforeunload', () => {
   window.RetroPresence?.idle();
+  try { screen.orientation?.unlock?.(); } catch {}
   if (objectUrl) URL.revokeObjectURL(objectUrl);
 });

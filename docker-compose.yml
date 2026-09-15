@@ -35,6 +35,36 @@ services:
     expose:
       - "3000"
 
+  metadata:
+    build:
+      context: ./backend
+    command: ["node", "metadata-worker.js"]
+    restart: unless-stopped
+    init: true
+    user: "${PUID:-1000}:${PGID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    environment:
+      BACKEND_URL: http://backend:3000
+      ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
+      ADMIN_TOKEN_FILE: /data/admin-token
+      THEGAMESDB_API_KEY: "${THEGAMESDB_API_KEY:-}"
+      WIKIPEDIA_METADATA: "${WIKIPEDIA_METADATA:-1}"
+      AUTO_METADATA: "${AUTO_METADATA:-1}"
+      AUTO_METADATA_OVERWRITE: "${AUTO_METADATA_OVERWRITE:-0}"
+      AUTO_METADATA_INTERVAL: "${AUTO_METADATA_INTERVAL:-600}"
+      AUTO_METADATA_BATCH: "${AUTO_METADATA_BATCH:-8}"
+    volumes:
+      - ./catalog:/data:ro
+    depends_on:
+      - backend
+
   web:
     image: nginx:1.29-alpine
     restart: unless-stopped

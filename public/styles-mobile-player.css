@@ -1,0 +1,52 @@
+/* Touch/mobile player polish. Desktop layout is unchanged. */
+.mobile-mode-button{display:none}
+.mobile-hint{display:none;margin:0 0 10px;padding:10px 12px;border:1px solid #35505c;border-radius:9px;background:#0a1a22;color:#b9c7cc;font-size:12px;line-height:1.45}
+
+@media (pointer:coarse),(max-width:760px){
+  .player-page{overscroll-behavior:none}
+  .player-page .topbar{position:relative}
+  .player-topbar-inner{width:min(100% - 24px,1440px);gap:12px}
+  .player-topbar-inner .brand{font-size:11px}
+  .player-topbar-inner .back-link{margin-left:auto;font-size:10px}
+  .player-topbar-inner .status{display:none}
+  .player-shell{width:100%;margin:14px auto 32px;padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));box-sizing:border-box}
+  .player-meta{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+  .player-meta h1{font-size:clamp(28px,8vw,42px);line-height:1.02;margin:5px 0 0}
+  .player-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .player-actions .button{min-width:0;height:44px;padding:0 10px;font-size:9px;touch-action:manipulation}
+  .player-actions #controlsOpen{display:none}
+  .mobile-mode-button{display:inline-flex!important;align-items:center;justify-content:center}
+  .mobile-hint{display:block}
+  .notice{font-size:12px;line-height:1.4;padding:10px 12px;margin-bottom:10px}
+  .game-frame{width:100%;height:min(68dvh,calc((100vw - 20px) * .75));min-height:300px;aspect-ratio:auto;border-radius:8px;touch-action:none;-webkit-user-select:none;user-select:none}
+  .game-frame .emulator-stage{width:100%;height:100%;touch-action:none}
+  .game-info{grid-template-columns:1fr!important;gap:12px!important}
+  .player-help{display:none}
+  .gamepad-toast{left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));text-align:center}
+  .controls-dialog{max-height:calc(100dvh - 20px);overflow:auto;padding-bottom:max(18px,env(safe-area-inset-bottom))}
+  .controls-actions{display:grid;grid-template-columns:1fr}
+  body.mobile-playing{overflow:hidden;background:#000}
+  body.mobile-playing .topbar,
+  body.mobile-playing .player-meta,
+  body.mobile-playing #playerNotice,
+  body.mobile-playing #mobileHint,
+  body.mobile-playing .game-info,
+  body.mobile-playing .player-help{display:none!important}
+  body.mobile-playing .player-shell{width:100vw;height:100dvh;margin:0;padding:0}
+  body.mobile-playing .game-frame{width:100vw;height:100dvh;min-height:0;border:0;border-radius:0;max-width:none}
+}
+
+.game-frame:fullscreen,.game-frame:-webkit-full-screen{width:100vw;height:100vh;height:100dvh;max-width:none;border:0;background:#000;padding:max(0px,env(safe-area-inset-top)) max(0px,env(safe-area-inset-right)) max(0px,env(safe-area-inset-bottom)) max(0px,env(safe-area-inset-left));box-sizing:border-box;touch-action:none}
+.game-frame:fullscreen .emulator-stage,.game-frame:-webkit-full-screen .emulator-stage{width:100%;height:100%}
+
+@media (pointer:coarse) and (orientation:portrait){
+  .mobile-hint::before{content:'↻ ';color:#ffbf58;font-weight:900}
+}
+
+@media (pointer:coarse){
+  .local-page .player-wrap:not(.hidden){width:100%;margin-left:0;margin-right:0}
+  .local-page .playerbar{display:flex;flex-wrap:wrap;gap:8px;padding:10px}
+  .local-page .playerbar .secondary{min-height:44px;flex:1 1 140px}
+  .local-page .playerbar #nowPlaying{flex:1 0 100%;white-space:normal}
+  .local-page .game-frame{touch-action:none}
+}

@@ -1,149 +1,109 @@
 # Library management
 
-Retro Portal 0.8 separates the player-facing portal from owner-only collection management.
-
-- `/` — public portal; only fully playable titles are visible.
-- `/game.html?id=...` — emulator, game description/history and keyboard configuration.
-- `/local.html` — visitor's local ROM; the selected file stays in the browser.
-- `/admin.html` — owner cabinet for ROMs, BIOS files, cards, metadata review and publishing.
-
-Visitors never need to understand missing ROMs, BIOS paths or server layout.
+Players and owners use separate interfaces: `/` is the public library, `/game.html` is the player, `/local.html` runs a local ROM without uploading it, and `/admin.html` is the Library Manager.
 
 ## First login
 
-If `ADMIN_TOKEN` is not set in `.env`, the backend creates a persistent random token on first start:
+If `ADMIN_TOKEN` is not set, the backend creates a persistent random token:
 
 ```bash
 cat catalog/admin-token
 ```
 
-Open `https://your-domain/admin.html` and paste the token. It is kept only in the current tab's `sessionStorage`.
+Open `/admin.html` and paste it. The browser keeps it only in the current tab's `sessionStorage`.
 
-After initial authentication, routine collection management is handled from the browser cabinet.
-
-## Uploading ROMs
+## Adding a game
 
 1. Open `/admin.html`.
-2. Select a ROM.
-3. Unambiguous formats can be auto-detected.
-4. Pick the platform manually for ambiguous formats such as `.bin`, `.chd` or `.iso`.
-5. Press **Upload ROM**.
+2. Select a ROM and choose the platform when the format is ambiguous.
+3. Press **Upload ROM**.
 
-The backend applies platform-specific extension allowlists, upload limits and file-signature checks where reliable. Stored filenames are generated from a normalized title plus a SHA-256 prefix rather than trusting the original path.
+The backend checks extension, upload size and known signatures. The final stored filename is derived from a normalized title and SHA-256. ZIP upload is disabled by default (`ALLOW_ZIP_ROMS=0`).
 
-ZIP browser upload is disabled by default:
+For large collections, copy files to `games/roms/<system>/` over SCP/SFTP and press **Scan**.
 
-```ini
-ALLOW_ZIP_ROMS=0
-```
+## Publishing
 
-Multi-file CUE/GDI sets should be copied through SCP/SFTP and then discovered with **Scan**.
-
-## Scanning a large collection
-
-```text
-games/roms/megadrive/
-games/roms/ps1/
-games/roms/dreamcast/
-games/roms/nes/
-games/roms/snes/
-games/roms/gb/
-games/roms/gba/
-games/roms/n64/
-games/roms/arcade/
-```
-
-Press **Scan** in `/admin.html`; new files are registered without editing JSON manually.
-
-## Publishing flow
-
-```text
-ROM present?
-    ↓
-BIOS required?
-    ↓
-BIOS present?
-    ↓
-Runtime ready?
-    ↓
-READY → visible to public players
-```
-
-Dependency diagnostics stay in the owner cabinet.
+A title becomes public only when the ROM, required BIOS and platform runtime are ready. Missing dependency diagnostics remain owner-only.
 
 ## BIOS
 
-The Library Manager can recognize several common PlayStation BIOS files by MD5 and store them under canonical names, including `scph5500.bin`, `scph5501.bin`, `scph5502.bin`, `PSXONPSP660.bin`, `scph101.bin`, `scph7001.bin` and `scph1001.bin`.
+Library Manager recognizes several common PlayStation BIOS files by MD5 and stores them using canonical names, including `scph5500.bin`, `scph5501.bin`, `scph5502.bin`, `PSXONPSP660.bin`, `scph101.bin`, `scph7001.bin` and `scph1001.bin`.
 
-The experimental Dreamcast profile currently expects:
+The experimental Dreamcast profile expects:
 
 ```text
 games/bios/dreamcast/dc_boot.bin
 games/bios/dreamcast/dc_flash.bin
 ```
 
-Dreamcast remains experimental until the browser Flycast runtime is finalized.
+Dreamcast remains experimental until browser-runtime integration is finalized.
 
-## Automatic descriptions, history and box art
+## Automatic covers and descriptions
 
-Retro Portal 0.8 uses a review-first workflow: **find → propose → approve**.
+Starting with 0.10 an isolated `metadata` container automatically enriches imported titles. It exposes no public listener and talks to the backend only on the internal Docker network.
 
-After ROM import the portal can:
+Matching uses **both game title and console/platform**:
 
-1. match a local curated preset;
-2. query TheGamesDB for title/year/player count/overview/box art when an API key is configured;
-3. query fixed Wikipedia API hosts for a short historical context paragraph;
-4. sanitize and length-limit external text;
-5. store the result as `pendingMetadata`;
-6. show it to the owner in `/admin.html`;
-7. publish it only after **Approve**.
+1. ROM names are normalized to remove region/revision/translation noise and generated hash suffixes;
+2. with `THEGAMESDB_API_KEY`, the worker resolves the target platform and searches TheGamesDB with a platform filter;
+3. title similarity must pass a confidence threshold before metadata is accepted;
+4. Wikipedia is used as a platform-qualified description/history fallback;
+5. cover lookup prefers TheGamesDB box art, then the matching system repository in Libretro thumbnails, then an allowed Wikipedia image;
+6. every downloaded image is still sent through the protected cover-upload path with the 8 MB limit and JPG/PNG/WebP signature validation;
+7. owner-edited fields are preserved by default.
+
+Configuration:
 
 ```ini
-THEGAMESDB_API_KEY=your-api-key
+THEGAMESDB_API_KEY=
 WIKIPEDIA_METADATA=1
+AUTO_METADATA=1
+AUTO_METADATA_OVERWRITE=0
+AUTO_METADATA_INTERVAL=600
+AUTO_METADATA_BATCH=8
 ```
 
-Provider failure never removes an imported ROM. Metadata can be requested again later.
+TheGamesDB is optional; Wikipedia + Libretro remain available without its API key. Set `AUTO_METADATA_OVERWRITE=1` only when you intentionally want the worker to replace already populated owner fields.
 
-## Editing cards
+Failed/no-match items use backoff instead of hammering external providers on every cycle.
 
-Each game has an **Edit card** section in Library Manager. The owner can change title, year, player count, short description, historical note, sort order, featured status and public visibility from the browser.
+## Manual fallback
 
-## Keyboard controls
+**Find description** and manual JPG/PNG/WebP cover upload remain available in Library Manager. Owners can also edit title, year, player count, description, history, sort order, featured state and publication manually.
 
-Every player page has a **Keyboard** button. A binding profile may be stored for one game or the entire platform. Profiles stay in browser `localStorage` and are applied through EmulatorJS `EJS_defaultControls`.
+## Mobile play
 
-## Real online activity
+The player includes a touch-first fullscreen mode with safe-area handling and best-effort landscape orientation lock. See [MOBILE.md](MOBILE.md).
 
-The online counter is not fabricated. WebSocket presence counts active browser sessions and deduplicates tabs that share the same local presence ID.
+## Keyboard and gamepads
 
-`/api/activity` reports current game activity and a 7-day popularity list based on real launch events. If there is no activity, the UI shows an honest empty state.
+Desktop players can store bindings per game or per platform. Touch devices use EmulatorJS's virtual gamepad, and USB/Bluetooth gamepads may be connected before or during play.
+
+## Activity
+
+`/api/activity` is based on active WebSocket sessions and launch events: current online count, currently played titles and 7-day popularity. Multiple tabs from one browser are deduplicated using a session ID.
 
 ## Security
 
-- server-side ROM/BIOS upload is admin-only;
-- the public local-ROM player never uploads the chosen ROM;
-- ZIP browser upload is disabled by default;
-- the backend never executes ROM files as OS programs;
-- metadata download URLs are not visitor-controlled;
-- external text requires owner approval;
-- the backend container runs non-root with a read-only root filesystem, no Linux capabilities and `no-new-privileges`;
-- API rate limits and browser security headers are enabled in bundled Nginx.
+- ROM/BIOS/cover uploads are admin-only;
+- the local-ROM player does not upload the visitor's ROM;
+- ZIP upload is disabled by default;
+- the backend does not execute ROMs as OS programs;
+- backend and metadata worker run non-root, read-only, capability-free and with `no-new-privileges`;
+- the metadata worker exposes no public port;
+- external image hosts are allowlisted, downloads are size-limited, and image signatures are revalidated by the backend;
+- manual owner edits are preserved by default;
+- admin/public API rate limits remain enabled.
 
-See [../../SECURITY.md](../../SECURITY.md) for the full threat model.
+See [../../SECURITY.md](../../SECURITY.md).
 
 ## Diagnostics
 
-Public catalog:
-
 ```bash
 curl -s http://127.0.0.1:8088/api/games | jq
-```
-
-Real activity:
-
-```bash
 curl -s http://127.0.0.1:8088/api/activity | jq
+docker compose logs --tail=100 metadata
 ```
 
 Owner catalog:
@@ -156,4 +116,4 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ## Legal
 
-Retro Portal does not distribute commercial ROMs, proprietary BIOS files or official commercial artwork. The server owner is responsible for the content they add.
+Retro Portal does not ship commercial ROMs, proprietary BIOS files or official commercial artwork. If the owner enables external metadata/artwork enrichment or adds their own content, they are responsible for having the appropriate rights to use it.
