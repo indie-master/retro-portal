@@ -34,7 +34,7 @@ Options:
   -h, --help
 
 The updater refuses tracked/untracked working-tree changes, uses ff-only Git updates and rolls code/containers
-back to the previous commit if the post-update local health check fails. Portal containers are recreated so
+back to the previous commit if the post-update local health check fails. The frontend container is recreated so
 mounted Nginx/config changes take effect immediately; unrelated Docker projects are never touched.
 TXT
 }
@@ -57,11 +57,13 @@ fi
 if [[ "$MODE" == edge ]]; then
   [[ -f .env.edge ]] || die 'Edge mode needs .env.edge (copy .env.edge.example and configure the control origin).'
   COMPOSE=(docker compose --env-file .env.edge -f docker-compose.edge.yml)
+  FRONTEND_SERVICE=edge
   ENV_FILE=.env.edge
   PORT_KEY=EDGE_PORT
   DEFAULT_PORT=8088
 else
   COMPOSE=(docker compose)
+  FRONTEND_SERVICE=web
   ENV_FILE=.env
   PORT_KEY=PORT
   DEFAULT_PORT=8088
@@ -97,11 +99,18 @@ if [[ ! -f emulatorjs/data/loader.js ]]; then
   ./scripts/install-emulatorjs.sh 4.2.3
 fi
 
+refresh_frontend() {
+  # Remount replaced Nginx files without unnecessarily restarting backend state.
+  "${COMPOSE[@]}" up -d --no-deps --force-recreate "$FRONTEND_SERVICE" || return 1
+  "${COMPOSE[@]}" exec -T "$FRONTEND_SERVICE" nginx -t || return 1
+}
+
 update_containers() {
   info "Updating $MODE containers..."
   "${COMPOSE[@]}" pull --ignore-buildable || true
-  "${COMPOSE[@]}" build --pull
-  "${COMPOSE[@]}" up -d --remove-orphans --force-recreate
+  "${COMPOSE[@]}" build --pull || return 1
+  "${COMPOSE[@]}" up -d --remove-orphans || return 1
+  refresh_frontend || return 1
 }
 
 health_ok() {
@@ -116,17 +125,17 @@ health_ok() {
 rollback() {
   [[ -n "$OLD_SHA" && $UPDATED_GIT -eq 1 ]] || return 1
   fail 'Post-update health check failed. Rolling repository and containers back to the previous commit.'
-  git reset --hard "$OLD_SHA"
+  git reset --hard "$OLD_SHA" || return 1
   if [[ "$MODE" == edge ]]; then COMPOSE=(docker compose --env-file .env.edge -f docker-compose.edge.yml); else COMPOSE=(docker compose); fi
-  "${COMPOSE[@]}" build
-  "${COMPOSE[@]}" up -d --remove-orphans --force-recreate
+  "${COMPOSE[@]}" build || return 1
+  "${COMPOSE[@]}" up -d --remove-orphans || return 1
+  refresh_frontend || return 1
   if health_ok; then ok "Rollback succeeded; deployment is healthy again at commit $OLD_SHA."; return 0; fi
   fail 'Rollback was attempted but the local health check is still failing. Inspect docker compose logs immediately.'
   return 1
 }
 
-update_containers
-if ! health_ok; then
+if ! update_containers || ! health_ok; then
   "${COMPOSE[@]}" logs --tail=160 || true
   rollback || die 'Update failed and automatic recovery could not prove a healthy deployment.'
   exit 1
@@ -136,4 +145,5 @@ NEW_SHA="$(git rev-parse HEAD 2>/dev/null || echo n/a)"
 ok "$MODE deployment is healthy on 127.0.0.1:$APP_PORT."
 echo "Version: $(cat VERSION 2>/dev/null || echo unknown)"
 echo "Commit:  $NEW_SHA"
-[[ "$MODE" == standalone ]] && echo 'Recommended: ./scripts/doctor.sh'
+if [[ "$MODE" == standalone ]]; then echo 'Recommended: ./scripts/doctor.sh'; fi
+

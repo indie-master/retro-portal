@@ -14,11 +14,12 @@ jobs:
         with:
           submodules: false
 
-      - name: Validate runtime installer permission contract
+      - name: Validate runtime installer and updater contracts
         run: |
           grep -q 'find "$DEST/data" -type d -exec chmod 0755' scripts/install-emulatorjs.sh
           grep -q 'find "$DEST/data" -type f -exec chmod 0644' scripts/install-emulatorjs.sh
           grep -q 'location \^~ /emulatorjs/' nginx.conf
+          grep -q 'force-recreate.*FRONTEND_SERVICE' scripts/update.sh
 
       - name: Start portal with runtime fixture
         run: |
@@ -50,9 +51,29 @@ jobs:
           curl -fsS http://127.0.0.1:18091/healthz >/dev/null
           curl -fsS http://127.0.0.1:18091/emulatorjs/data/loader.js | grep -q '__retroRuntimeSmoke'
 
+          curl -fsSI http://127.0.0.1:18091/game.js | tr -d '\r' | grep -qi '^cache-control: .*no-cache'
+          curl -fsSI http://127.0.0.1:18091/styles.css | tr -d '\r' | grep -qi '^cache-control: .*no-cache'
+
+          # Replace the config inode, as a Git checkout does, then verify the
+          # updater remounts it and preserves the unchanged backend container.
+          BACKEND_BEFORE="$(docker compose ps -q backend)"
+          WEB_BEFORE="$(docker compose ps -q web)"
+          python3 - <<'PYTEST'
+          from pathlib import Path
+          config = Path('nginx.conf')
+          replacement = Path('nginx.conf.next')
+          replacement.write_text(config.read_text().replace('server_name _;', 'server_name _;\n    location = /__release_smoke { return 200 "release-config-loaded"; }'))
+          replacement.replace(config)
+          PYTEST
+          bash scripts/update.sh --mode standalone --no-git --yes
+          test "$(docker compose ps -q backend)" = "$BACKEND_BEFORE"
+          test "$(docker compose ps -q web)" != "$WEB_BEFORE"
+          test "$(curl -fsS http://127.0.0.1:18091/__release_smoke)" = 'release-config-loaded'
+
           NGINX_TEST="$(docker compose exec -T web nginx -t 2>&1)"
           printf '%s\n' "$NGINX_TEST"
           if grep -q 'duplicate extension "iso"' <<<"$NGINX_TEST"; then
             echo 'Unexpected duplicate ISO MIME warning' >&2
             exit 1
           fi
+

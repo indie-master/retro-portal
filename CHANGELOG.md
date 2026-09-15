@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0 — Player, library and reliable updates
+
+- consolidate player/library polish and deployment fixes previously split across PRs #20, #21 and #22;
+- improve mobile player layout, controls, library filtering and owner library management;
+- recreate and validate the frontend on update and rollback so replaced Nginx bind mounts are loaded;
+- recover from container build/start failures as well as failed health checks;
+- revalidate application JS/CSS on standalone and edge deployments;
+- derive client IP from the trusted real-IP module and log the original proxy peer separately.
+
 ## 0.10.0 — Mobile play, automatic metadata & real client IPs
 
 - added a touch-first mobile player with safe-area handling, responsive controls, fullscreen mobile mode and best-effort landscape orientation locking;
@@ -101,3 +110,4 @@
 ## 0.1.0
 
 - initial browser retro portal with EmulatorJS, homebrew demo catalog and WebSocket presence.
+
