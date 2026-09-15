@@ -36,6 +36,7 @@ jobs:
           ADMIN_TOKEN=
           THEGAMESDB_API_KEY=
           WIKIPEDIA_METADATA=0
+          AUTO_METADATA=0
           ALLOW_ZIP_ROMS=0
           MAX_UPLOAD_BYTES=2147483648
           EOF
@@ -55,8 +56,9 @@ jobs:
           curl -fsSI http://127.0.0.1:18091/styles.css | tr -d '\r' | grep -qi '^cache-control: .*no-cache'
 
           # Replace the config inode, as a Git checkout does, then verify the
-          # updater remounts it and preserves the unchanged backend container.
-          BACKEND_BEFORE="$(docker compose ps -q backend)"
+          # updater remounts it and preserves backend catalog/auth state.
+          CATALOG_BEFORE="$(sha256sum catalog/runtime-games.json)"
+          TOKEN_BEFORE="$(sha256sum catalog/admin-token)"
           WEB_BEFORE="$(docker compose ps -q web)"
           python3 - <<'PYTEST'
           from pathlib import Path
@@ -66,7 +68,8 @@ jobs:
           replacement.replace(config)
           PYTEST
           bash scripts/update.sh --mode standalone --no-git --yes
-          test "$(docker compose ps -q backend)" = "$BACKEND_BEFORE"
+          test "$(sha256sum catalog/runtime-games.json)" = "$CATALOG_BEFORE"
+          test "$(sha256sum catalog/admin-token)" = "$TOKEN_BEFORE"
           test "$(docker compose ps -q web)" != "$WEB_BEFORE"
           test "$(curl -fsS http://127.0.0.1:18091/__release_smoke)" = 'release-config-loaded'
 
