@@ -24,7 +24,8 @@ jobs:
           cp public/index.html public/game.html public/local.html \
              public/styles.css public/styles-base.css public/styles-library.css public/styles-local.css \
              public/styles-responsive.css public/styles-art.css public/styles-v060.css \
-             public/styles-controls.css public/styles-activity.css public/controls.js _site/
+             public/styles-controls.css public/styles-activity.css public/styles-mobile-player.css \
+             public/controls.js _site/
           cp -a public/covers/. _site/covers/
           cp -a public/assets/. _site/assets/
           if [ -d public/screenshots ]; then cp -a public/screenshots/. _site/screenshots/; fi
@@ -53,6 +54,8 @@ jobs:
               g['experimental'] = False
               g['playable'] = True
               g['romUrl'] = f"roms/{g['rom']}"
+              g['romBytes'] = (root/'games/roms'/g['rom']).stat().st_size
+              g['romFormat'] = (root/'games/roms'/g['rom']).suffix.lstrip('.').lower()
               if g.get('cover'): g['cover'] = g['cover'].lstrip('/')
               g['screenshots'] = [s.lstrip('/') for s in g.get('screenshots', [])]
               out.append(g)
@@ -75,6 +78,7 @@ jobs:
           test -s _site/controls.js
           test -s _site/styles-controls.css
           test -s _site/styles-activity.css
+          test -s _site/styles-mobile-player.css
           test -s _site/catalog.json
           node --check _site/app.js
           node --check _site/game.js

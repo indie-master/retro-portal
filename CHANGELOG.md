@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.1 — Mobile player hotfix
+
+- restore the documented mobile-mode action removed during the 0.11.0 player consolidation;
+- defer ROM downloads on touch devices until an explicit play gesture;
+- add an iOS-safe full-viewport fallback with visual-viewport and safe-area handling plus an always-available exit control;
+- reduce PlayStation peak memory pressure on mobile by disabling threaded mode and large EmulatorJS IndexedDB ROM copies;
+- replace EmulatorJS's generic A/B/C fallback with a dedicated PlayStation touch layout;
+- expose ROM byte size/format in the game API and cover the deferred mobile launch path in CI.
+
 ## 0.11.0 — Player, library and reliable updates
 
 - consolidate player/library polish and deployment fixes previously split across PRs #20, #21 and #22;
@@ -110,4 +119,3 @@
 ## 0.1.0
 
 - initial browser retro portal with EmulatorJS, homebrew demo catalog and WebSocket presence.
-

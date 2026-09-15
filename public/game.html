@@ -20,6 +20,7 @@
     <div class="player-meta compact-player-head">
       <div class="player-title-block"><p id="gameSystem" class="eyebrow">ЗАГРУЗКА</p><h1 id="gameTitle">Готовим игру…</h1></div>
       <div class="player-actions">
+        <button id="mobileMode" class="button mobile-mode-button" type="button" disabled>▰ МОБИЛЬНЫЙ РЕЖИМ</button>
         <button id="controlsOpen" class="button" type="button">🎮 УПРАВЛЕНИЕ</button>
         <button id="fullscreenGame" class="button" type="button">⛶ ПОЛНЫЙ ЭКРАН</button>
         <a class="button" href="./index.html#library">ВЫЙТИ</a>
@@ -30,12 +31,16 @@
     <div id="gamepadNotice" class="gamepad-toast" hidden></div>
 
     <section class="game-frame" id="gameFrame">
+      <button id="mobileExit" class="mobile-player-exit" type="button" aria-label="Выйти из мобильного режима">× ВЫЙТИ</button>
+      <div id="rotateHint" class="rotate-hint" aria-live="polite">↻ Поверните телефон горизонтально</div>
       <div id="launchGuide" class="launch-guide" aria-live="polite">
         <div class="launch-guide-card">
-          <p class="eyebrow">ПОКА ИГРА ЗАГРУЖАЕТСЯ</p>
-          <h2 id="launchGuideTitle">Управление</h2>
-          <div id="controlPreview" class="control-preview"></div>
-          <div class="gamepad-guide">
+          <p id="launchGuideEyebrow" class="eyebrow">ГОТОВИМ ПЛЕЕР</p>
+          <h2 id="launchGuideTitle">Подождите…</h2>
+          <p id="launchGuideText" class="launch-guide-copy">Проверяем игру и настройки эмулятора.</p>
+          <button id="playGame" class="primary launch-game" type="button" disabled>ПОДОЖДИТЕ…</button>
+          <div id="controlPreview" class="control-preview desktop-launch-help"></div>
+          <div class="gamepad-guide desktop-launch-help">
             <strong>Геймпад</strong>
             <span id="gamepadStatus">Можно подключить USB/Bluetooth-геймпад сейчас или во время игры.</span>
           </div>
