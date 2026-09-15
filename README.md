@@ -18,7 +18,7 @@
   <a href="https://ubuntu.com/server"><img alt="Ubuntu Server" src="https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-E95420?logo=ubuntu&logoColor=white"></a>
   <a href="https://docs.docker.com/engine/"><img alt="Docker Compose" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white"></a>
   <a href="https://emulatorjs.org/"><img alt="EmulatorJS" src="https://img.shields.io/badge/EmulatorJS-4.2.3-a9d56f"></a>
-  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.10.0-71cde2"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-0.11.0-71cde2"></a>
 </p>
 
 ![Главная страница Retro Portal](docs/images/home.png)
@@ -210,3 +210,4 @@ Uninstaller не запускает глобальные Docker prune-коман
 ## Контент и лицензии
 
 Репозиторий не включает коммерческие ROM, проприетарные BIOS или официальные коммерческие artwork. Demo содержит только redistributable homebrew-контент. Владелец self-hosted инсталляции отвечает за право использования добавленных ROM/BIOS/изображений и материалов, получаемых через включённые им внешние metadata providers.
+
