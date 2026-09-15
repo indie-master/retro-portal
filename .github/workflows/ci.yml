@@ -66,7 +66,8 @@ jobs:
           grep -q 'libretro-thumbnails' backend/metadata-worker.js
           grep -q 'touch-device' public/game.js
           grep -q 'player-fullscreen' public/game.js
-          grep -q 'touch-device' public/styles-mobile-player.css
+          grep -q 'pointer:coarse' public/styles-mobile-player.css
+          grep -q 'game-frame:fullscreen' public/styles-mobile-player.css
           grep -q 'viewport-fit=cover' public/game.html
           grep -q 'retro_client_ip' nginx.conf
           grep -q '^catalog/admin-token$' .gitignore
