@@ -56,7 +56,12 @@ async function toggleFullscreen() {
   }
   try {
     if (frame.requestFullscreen) await frame.requestFullscreen({ navigationUI: 'hide' });
-    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+    else if (frame.webkitRequestFullscreen) {
+      const request = frame.webkitRequestFullscreen();
+      if (request?.then) await request;
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      if (!fullscreenElement()) throw new Error('WebKit fullscreen request was ignored');
+    }
     else throw new Error('Fullscreen API unavailable');
     await lockLandscape();
   } catch (error) {

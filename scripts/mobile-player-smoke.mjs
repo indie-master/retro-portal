@@ -41,7 +41,7 @@ const game = {
   playable: true
 };
 
-function createEnvironment({ touch, nativeFullscreen }) {
+function createEnvironment({ touch, nativeFullscreen, silentWebkit = false }) {
   const ids = [
     'gameTitle', 'gameSystem', 'playerNotice', 'gameFrame', 'fullscreenGame',
     'controlsOpen', 'gamepadNotice', 'controlsGamepadStatus', 'gameInfo',
@@ -73,6 +73,7 @@ function createEnvironment({ touch, nativeFullscreen }) {
       documentListeners.get('fullscreenchange')?.();
     };
   }
+  if (silentWebkit) elements.gameFrame.webkitRequestFullscreen = () => undefined;
   const window = {
     crossOriginIsolated: true,
     addEventListener: (type, callback) => windowListeners.set(type, callback),
@@ -129,6 +130,12 @@ assert.equal(fallback.body.classList.contains('player-fullscreen-fallback'), tru
 assert.match(fallback.elements.fullscreenGame.textContent, /ВЫЙТИ ИЗ ЭКРАНА/);
 await fallback.elements.fullscreenGame.fire('click');
 assert.equal(fallback.body.classList.contains('player-fullscreen-fallback'), false, 'the same fullscreen button should close the fallback');
+
+const ignoredWebkit = createEnvironment({ touch: true, nativeFullscreen: false, silentWebkit: true });
+await vm.runInNewContext(source, ignoredWebkit.context, { filename: 'public/game.js' });
+await new Promise((resolve) => setTimeout(resolve, 0));
+await ignoredWebkit.elements.fullscreenGame.fire('click');
+assert.equal(ignoredWebkit.body.classList.contains('player-fullscreen-fallback'), true, 'ignored iPhone WebKit fullscreen requests should use the viewport fallback');
 
 const desktop = createEnvironment({ touch: false, nativeFullscreen: true });
 await vm.runInNewContext(source, desktop.context, { filename: 'public/game.js' });
